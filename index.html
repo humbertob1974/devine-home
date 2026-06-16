@@ -634,11 +634,16 @@ window.switchTab = function(tab) {
   render();
 };
 
-window.toggleComments = function(taskId) {
+window.toggleComments = function(taskId, forceOpen) {
   const body = document.getElementById(`comm-body-${taskId}`);
   const isOpen = body.style.display !== 'none';
-  body.style.display = isOpen ? 'none' : 'block';
-  if (!isOpen) setTimeout(() => { const inp = document.getElementById(`comm-input-${taskId}`); if(inp) inp.focus(); }, 100);
+  if (forceOpen) {
+    body.style.display = 'block';
+    setTimeout(() => { const inp = document.getElementById(`comm-input-${taskId}`); if(inp) inp.focus(); }, 100);
+  } else {
+    body.style.display = isOpen ? 'none' : 'block';
+    if (!isOpen) setTimeout(() => { const inp = document.getElementById(`comm-input-${taskId}`); if(inp) inp.focus(); }, 100);
+  }
 };
 
 // ── RENDER ──
@@ -696,7 +701,10 @@ function render() {
         </div>
         ${t.desc?`<div style="font-size:13px;color:var(--text-dim);margin-bottom:10px;line-height:1.5;">${escHtml(t.desc)}</div>`:''}
         <div class="comments-section">
-          <button class="comments-toggle" onclick="window.toggleComments('${safeId}')">💬 ${(t.comments||[]).length} comentario${(t.comments||[]).length!==1?'s':''}</button>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:${(t.comments||[]).length>0?'8px':'0'};">
+            <button class="comments-toggle" onclick="window.toggleComments('${safeId}')">💬 ${(t.comments||[]).length} comentario${(t.comments||[]).length!==1?'s':''}</button>
+            <button onclick="window.toggleComments('${safeId}', true)" style="background:var(--accent-dim);border:1px solid rgba(245,166,35,0.3);color:var(--accent);border-radius:8px;padding:5px 10px;font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:4px;">✏️ Comentar</button>
+          </div>
           <div id="comm-body-${safeId}" style="display:none;">
             <div class="comment-list">${commentsHtml}</div>
             <div class="comment-input-row">
