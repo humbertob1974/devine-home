@@ -1,0 +1,1751 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+<script>emailjs.init({publicKey: "rMb8s_6awE5PRaCXt"});</script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Casa Devine — Control de Pendientes</title>
+<style>
+:root {
+  --bg:#1A1A1E;--surface:#252529;--surface2:#2E2E33;
+  --accent:#F5A623;--accent-dim:rgba(245,166,35,0.15);
+  --green:#27AE60;--green-dim:rgba(39,174,96,0.15);
+  --red:#E74C3C;--text:#F0EDE8;--text-dim:#9A9490;
+  --border:rgba(255,255,255,0.08);--radius:16px;--radius-sm:10px;
+  --max-w:480px;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif;min-height:100dvh;overscroll-behavior:none;}
+.hidden{display:none!important;}
+.spinner{width:40px;height:40px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin 0.8s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+@keyframes slideUp{from{transform:translateY(100%);}to{transform:translateY(0);}}
+
+/* FULLSCREEN SCREENS */
+.screen{position:fixed;inset:0;z-index:100;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px 24px;overflow-y:auto;}
+.screen-icon{font-size:48px;margin-bottom:12px;}
+.screen-title{font-size:24px;font-weight:800;letter-spacing:-0.5px;margin-bottom:6px;}
+.screen-sub{font-size:14px;color:var(--text-dim);margin-bottom:28px;text-align:center;}
+
+/* USER SCREEN */
+.user-list{display:flex;flex-direction:column;gap:10px;width:100%;max-width:340px;}
+.user-btn{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px 18px;display:flex;align-items:center;gap:14px;cursor:pointer;transition:all 0.15s;flex:1;text-align:left;color:var(--text);}
+.user-btn:hover{border-color:var(--accent);background:var(--surface2);}
+.user-btn:active{transform:scale(0.97);border-color:var(--accent);}
+.user-avatar{width:42px;height:42px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:800;flex-shrink:0;}
+.user-info-name{font-size:15px;font-weight:700;}
+.user-info-role{font-size:12px;color:var(--text-dim);margin-top:2px;}
+.add-row{margin-top:20px;width:100%;max-width:340px;display:flex;flex-direction:column;gap:8px;}
+.add-input{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:12px;color:var(--text);font-size:15px;padding:13px 15px;outline:none;font-family:inherit;}
+.add-input:focus{border-color:rgba(245,166,35,0.6);}
+.add-btn-row{background:var(--accent-dim);border:1px solid rgba(245,166,35,0.35);color:var(--accent);border-radius:12px;padding:13px;font-size:14px;font-weight:700;cursor:pointer;width:100%;}
+.add-btn-row:hover{background:var(--accent);color:#000;}
+.add-btn-row:active{background:var(--accent);color:#000;}
+
+/* PROJECTS SCREEN */
+.projects-grid{display:flex;flex-direction:column;gap:12px;width:100%;max-width:400px;}
+.project-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;overflow:hidden;cursor:pointer;transition:all 0.15s;display:flex;align-items:center;gap:0;}
+.project-card:hover{border-color:var(--accent);transform:translateY(-1px);box-shadow:0 6px 20px rgba(0,0,0,0.3);}
+.project-card:active{transform:scale(0.98);border-color:var(--accent);}
+.project-thumb{width:90px;height:70px;object-fit:cover;flex-shrink:0;}
+.project-thumb-placeholder{width:90px;height:70px;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:28px;flex-shrink:0;}
+.project-info{padding:12px 14px;flex:1;}
+.project-name{font-size:15px;font-weight:800;margin-bottom:4px;}
+.project-stats{font-size:11px;color:var(--text-dim);}
+.project-del{padding:12px;color:var(--red);font-size:18px;cursor:pointer;background:none;border:none;}
+
+/* AVANCES */
+.avance-card{background:var(--surface);border-radius:var(--radius);margin-bottom:14px;overflow:hidden;border:1px solid var(--border);}
+.avance-photo{width:100%;aspect-ratio:16/9;object-fit:cover;display:block;cursor:pointer;}
+.avance-body{padding:14px 16px;}
+.avance-desc{font-size:14px;line-height:1.6;margin-bottom:8px;}
+.avance-meta{font-size:11px;color:var(--text-dim);display:flex;gap:12px;flex-wrap:wrap;}
+.avance-add-btn{display:flex;align-items:center;justify-content:center;gap:8px;background:rgba(155,89,182,0.15);border:1px solid rgba(155,89,182,0.35);color:#9B59B6;border-radius:12px;padding:14px;font-size:14px;font-weight:700;cursor:pointer;width:100%;margin-bottom:16px;}
+.avance-add-btn:active{background:#9B59B6;color:#fff;}
+
+/* ── DESKTOP LAYOUT ── */
+@media (min-width: 768px) {
+  /* Sidebar + main layout */
+  #app {
+    flex-direction: row !important;
+    align-items: flex-start;
+  }
+
+  /* Sidebar */
+  #app > header.header {
+    position: sticky;
+    top: 0;
+    width: 280px;
+    min-width: 280px;
+    height: 100dvh;
+    border-right: 1px solid var(--border);
+    border-bottom: none;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    flex-shrink: 0;
+  }
+
+  /* Remove active-user-bar from sticky header on desktop */
+  .active-user-bar {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+    border-radius: 0;
+  }
+
+  .header-inner {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    padding: 16px;
+  }
+
+  .header-top { margin-bottom: 20px; }
+
+  /* Tabs become vertical in sidebar */
+  .tabs {
+    flex-direction: column;
+    background: transparent;
+    padding: 0;
+    gap: 4px;
+    margin-top: 8px;
+  }
+
+  .tab {
+    justify-content: flex-start;
+    padding: 10px 14px;
+    border-radius: 10px;
+    font-size: 14px;
+  }
+
+  /* Main content area */
+  #app > .stats-bar,
+  #app > .progress-wrap,
+  #app > main.main {
+    flex: 1;
+    min-width: 0;
+  }
+
+  /* Wrap non-header content in a scrollable column */
+  .desktop-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    height: 100dvh;
+  }
+
+  .stats-bar { padding: 20px 24px 12px; }
+  .progress-wrap { padding: 0 24px 16px; }
+  .main { padding: 0 24px 40px; }
+
+  /* Task cards in 2-column grid on large screens */
+  @media (min-width: 1100px) {
+    #task-list {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 16px;
+    }
+    .task-card { margin-bottom: 0; }
+  }
+
+  /* Modals centered on desktop */
+  .modal-overlay {
+    align-items: center;
+    justify-content: center;
+  }
+  .modal {
+    border-radius: 20px;
+    max-width: 520px;
+    max-height: 85dvh;
+    animation: fadeIn 0.2s ease;
+  }
+  @keyframes fadeIn { from{opacity:0;transform:scale(0.96);}to{opacity:1;transform:scale(1);} }
+
+  /* OVERDUE BADGE */
+  .overdue-badge {
+    display:inline-flex;align-items:center;gap:5px;
+    background:#E74C3C;color:#fff;
+    border-radius:20px;padding:4px 10px;
+    font-size:11px;font-weight:800;
+    animation:blink 1.2s ease-in-out infinite;
+    letter-spacing:0.3px;
+  }
+  @keyframes blink {
+    0%,100%{opacity:1;box-shadow:0 0 0 0 rgba(231,76,60,0.6);}
+    50%{opacity:0.75;box-shadow:0 0 0 6px rgba(231,76,60,0);}
+  }
+
+  .picker-overlay { align-items: center; justify-content: center; }
+  .picker-menu { border-radius: 20px; max-width: 400px; padding: 20px 20px 24px; animation: fadeIn 0.2s ease; }
+
+  #pwd-modal { align-items: center; justify-content: center; }
+  #pwd-modal > div { border-radius: 20px; max-width: 400px; animation: fadeIn 0.2s ease; }
+
+  #email-overlay { align-items: center; justify-content: center; }
+  #email-overlay > div { border-radius: 20px; max-width: 440px; animation: fadeIn 0.2s ease; }
+
+  .screen { padding: 40px; }
+  .user-list { max-width: 380px; }
+  .add-row { max-width: 380px; }
+  .projects-grid { max-width: 600px; }
+}
+
+/* HEADER */
+.header{position:sticky;top:0;z-index:50;background:rgba(26,26,30,0.95);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-bottom:1px solid var(--border);}
+.active-user-bar{display:flex;align-items:center;gap:8px;padding:7px 16px;background:var(--surface2);border-bottom:1px solid var(--border);cursor:pointer;}
+.active-user-bar:active{background:var(--surface);}
+.aub-avatar{width:24px;height:24px;border-radius:50%;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;}
+.aub-name{font-size:12px;font-weight:600;flex:1;}
+.aub-project{font-size:11px;color:var(--accent);font-weight:700;}
+.aub-change{font-size:11px;color:var(--text-dim);}
+.header-inner{padding:12px 16px 10px;}
+.header-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
+.logo{display:flex;align-items:center;gap:10px;}
+.logo-icon{width:34px;height:34px;background:var(--accent);border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:18px;overflow:hidden;padding:0;}
+.logo-text{font-size:17px;font-weight:800;letter-spacing:-0.4px;}
+.logo-sub{font-size:11px;color:var(--text-dim);font-weight:500;text-transform:uppercase;}
+.header-actions{display:flex;gap:8px;}
+.hbtn{background:var(--surface2);border:1px solid var(--border);color:var(--text-dim);border-radius:50%;width:38px;height:38px;font-size:17px;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+.hbtn.accent{background:var(--accent);color:#000;border-color:var(--accent);box-shadow:0 4px 14px rgba(245,166,35,0.35);}
+.hbtn:active{transform:scale(0.92);}
+.tabs{display:flex;gap:6px;background:var(--surface);border-radius:10px;padding:4px;}
+.tab{flex:1;padding:8px;border:none;border-radius:7px;font-size:13px;font-weight:600;cursor:pointer;background:transparent;color:var(--text-dim);transition:all 0.2s;display:flex;align-items:center;justify-content:center;gap:5px;}
+.tab.active{background:var(--surface2);color:var(--text);box-shadow:0 1px 4px rgba(0,0,0,0.3);}
+.tab-badge{background:var(--accent);color:#000;border-radius:9px;font-size:10px;font-weight:700;padding:1px 6px;min-width:18px;text-align:center;}
+.tab.h-tab .tab-badge{background:var(--green);}
+
+/* STATS */
+.stats-bar{display:flex;gap:10px;padding:12px 16px;}
+.stat-card{flex:1;background:var(--surface);border-radius:var(--radius-sm);padding:10px;text-align:center;border:1px solid var(--border);}
+.stat-num{font-size:20px;font-weight:800;letter-spacing:-0.5px;}
+.stat-num.accent{color:var(--accent);}
+.stat-num.green{color:var(--green);}
+.stat-label{font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.4px;margin-top:2px;font-weight:600;}
+
+/* PROGRESS */
+.progress-wrap{padding:0 16px 12px;}
+
+/* MAIN */
+.main{padding:0 16px 100px;}
+.section-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:var(--text-dim);padding:4px 0 10px;}
+
+/* TASK CARD */
+.task-card{background:var(--surface);border-radius:var(--radius);margin-bottom:14px;overflow:hidden;border:1px solid var(--border);}
+.task-card.completed{opacity:0.75;border-color:rgba(39,174,96,0.3);}
+.card-photo-main{position:relative;width:100%;aspect-ratio:16/9;background:var(--surface2);overflow:hidden;}
+.card-photo-main img{width:100%;height:100%;object-fit:cover;display:block;}
+.card-photo-placeholder{width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;color:var(--text-dim);font-size:13px;cursor:pointer;border:2px dashed rgba(255,255,255,0.12);}
+.card-photo-placeholder .icon{font-size:30px;}
+.card-status-badge{position:absolute;top:10px;right:10px;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:700;backdrop-filter:blur(10px);}
+.badge-pending{background:rgba(245,166,35,0.9);color:#000;}
+.badge-done{background:rgba(39,174,96,0.9);color:#fff;}
+.photo-strip{display:flex;gap:4px;padding:4px;overflow-x:auto;scroll-snap-type:x mandatory;}
+.photo-strip::-webkit-scrollbar{display:none;}
+.photo-thumb-wrap{flex-shrink:0;width:100px;height:75px;border-radius:8px;overflow:hidden;position:relative;scroll-snap-align:start;background:var(--surface2);}
+.photo-thumb-wrap img{width:100%;height:100%;object-fit:cover;display:block;}
+.photo-thumb-del{position:absolute;top:3px;right:3px;background:rgba(0,0,0,0.65);color:#fff;border:none;border-radius:50%;width:20px;height:20px;font-size:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+.photo-add-thumb{flex-shrink:0;width:75px;height:75px;border-radius:8px;border:2px dashed rgba(255,255,255,0.15);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;cursor:pointer;color:var(--text-dim);font-size:10px;scroll-snap-align:start;}
+.card-body{padding:14px 16px;}
+.card-header{display:flex;align-items:flex-start;gap:10px;margin-bottom:10px;}
+.card-title-group{flex:1;}
+.card-title{font-size:16px;font-weight:700;letter-spacing:-0.2px;line-height:1.3;margin-bottom:3px;}
+.card-meta{font-size:11px;color:var(--text-dim);display:flex;gap:10px;flex-wrap:wrap;}
+.priority-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-top:5px;}
+.priority-alta{background:#E74C3C;}.priority-media{background:var(--accent);}.priority-baja{background:var(--green);}
+.history-tag{display:inline-flex;align-items:center;gap:5px;background:var(--green-dim);color:var(--green);border-radius:6px;padding:3px 8px;font-size:11px;font-weight:700;margin-bottom:6px;}
+.comments-section{margin-top:10px;border-top:1px solid var(--border);padding-top:10px;}
+.comments-toggle{background:none;border:none;color:var(--text-dim);font-size:12px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:5px;padding:2px 0;}
+.comment-list{margin-top:8px;display:flex;flex-direction:column;gap:8px;}
+.comment-item{background:var(--surface2);border-radius:10px;padding:10px 12px;display:flex;gap:10px;align-items:flex-start;}
+.comment-avatar{width:28px;height:28px;border-radius:50%;font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;}
+.comment-body{flex:1;}
+.comment-author{font-size:11px;font-weight:700;margin-bottom:3px;}
+.comment-text{font-size:13px;line-height:1.5;}
+.comment-time{font-size:10px;color:var(--text-dim);margin-top:4px;}
+.comment-input-row{display:flex;gap:8px;margin-top:8px;}
+.comment-input{flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:13px;padding:8px 12px;outline:none;font-family:inherit;}
+.comment-input:focus{border-color:rgba(245,166,35,0.5);}
+.comment-send{background:var(--accent-dim);border:1px solid rgba(245,166,35,0.3);border-radius:10px;color:var(--accent);font-size:16px;padding:0 14px;cursor:pointer;}
+.comment-send:active{background:var(--accent);color:#000;}
+.card-actions{display:flex;gap:8px;margin-top:12px;}
+.btn-complete{flex:1;background:var(--green-dim);border:1px solid rgba(39,174,96,0.35);color:var(--green);border-radius:10px;padding:11px;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;transition:all 0.15s;}
+.btn-complete:active,.btn-complete.done{background:var(--green);color:#fff;border-color:var(--green);}
+.btn-delete{background:rgba(231,76,60,0.12);border:1px solid rgba(231,76,60,0.25);color:var(--red);border-radius:10px;padding:11px 16px;font-size:16px;cursor:pointer;}
+.btn-delete:active{background:var(--red);color:#fff;}
+
+/* EMPTY */
+.empty-state{text-align:center;padding:60px 20px;color:var(--text-dim);}
+.empty-icon{font-size:52px;margin-bottom:14px;}
+.empty-title{font-size:17px;font-weight:700;color:var(--text);margin-bottom:6px;}
+.empty-sub{font-size:13px;line-height:1.6;}
+
+/* MODAL */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:200;display:none;align-items:flex-end;backdrop-filter:blur(4px);}
+.modal-overlay.open{display:flex;}
+.modal{background:var(--surface);border-radius:24px 24px 0 0;width:100%;max-height:92dvh;overflow-y:auto;padding:8px 0 40px;animation:slideUp 0.3s cubic-bezier(0.34,1.56,0.64,1);}
+.modal-handle{width:38px;height:4px;background:rgba(255,255,255,0.2);border-radius:2px;margin:8px auto 18px;}
+.modal-title{font-size:18px;font-weight:800;padding:0 20px;margin-bottom:20px;}
+.form-group{padding:0 20px;margin-bottom:16px;}
+.form-label{font-size:12px;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;display:block;}
+.form-input,.form-select,.form-textarea{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:12px;color:var(--text);font-size:15px;padding:13px 15px;outline:none;font-family:inherit;transition:border-color 0.2s;}
+.form-input:focus,.form-select:focus,.form-textarea:focus{border-color:rgba(245,166,35,0.6);}
+.form-select{appearance:none;cursor:pointer;}
+.form-textarea{min-height:80px;resize:vertical;line-height:1.5;}
+.photo-upload-btn{background:var(--surface2);border:1px dashed rgba(255,255,255,0.18);border-radius:12px;color:var(--text-dim);padding:16px;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:10px;width:100%;}
+.photo-preview-row{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;}
+.photo-preview-thumb{width:72px;height:72px;border-radius:9px;overflow:hidden;position:relative;flex-shrink:0;}
+.photo-preview-thumb img{width:100%;height:100%;object-fit:cover;display:block;}
+.photo-preview-thumb button{position:absolute;top:3px;right:3px;background:rgba(0,0,0,0.65);color:#fff;border:none;border-radius:50%;width:18px;height:18px;font-size:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+.btn-submit{display:block;width:calc(100% - 40px);margin:20px 20px 0;background:var(--accent);color:#000;border:none;border-radius:14px;padding:16px;font-size:16px;font-weight:800;cursor:pointer;box-shadow:0 4px 20px rgba(245,166,35,0.3);}
+.btn-submit:disabled{opacity:0.5;cursor:not-allowed;}
+.btn-cancel{display:block;width:calc(100% - 40px);margin:10px 20px 0;background:transparent;color:var(--text-dim);border:1px solid var(--border);border-radius:14px;padding:14px;font-size:15px;font-weight:600;cursor:pointer;}
+
+/* PICKER */
+.picker-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:300;display:none;align-items:flex-end;}
+.picker-overlay.open{display:flex;}
+.picker-menu{background:var(--surface);border-radius:20px 20px 0 0;width:100%;padding:8px 16px 40px;animation:slideUp 0.25s ease;}
+.picker-handle{width:38px;height:4px;background:rgba(255,255,255,0.2);border-radius:2px;margin:10px auto 16px;}
+.picker-title{font-size:13px;color:var(--text-dim);text-align:center;margin-bottom:14px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;}
+.picker-opt{background:var(--surface2);border:1px solid var(--border);border-radius:14px;padding:16px 18px;display:flex;align-items:center;gap:14px;cursor:pointer;margin-bottom:10px;width:100%;color:var(--text);font-size:15px;font-weight:600;position:relative;}
+.picker-opt:active{border-color:var(--accent);}
+.picker-opt .icon{font-size:24px;}
+.picker-opt input[type="file"]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;}
+.picker-cancel{background:transparent;border:1px solid var(--border);border-radius:14px;padding:14px;width:100%;color:var(--text-dim);font-size:15px;font-weight:600;cursor:pointer;}
+
+/* LIGHTBOX */
+.lightbox{position:fixed;inset:0;background:rgba(0,0,0,0.95);z-index:900;display:none;flex-direction:column;align-items:center;justify-content:center;}
+.lightbox.open{display:flex;}
+.lightbox-img{max-width:100%;max-height:90dvh;object-fit:contain;border-radius:8px;animation:lbIn 0.2s ease;}
+@keyframes lbIn{from{opacity:0;transform:scale(0.92);}to{opacity:1;transform:scale(1);}}
+.lightbox-close{position:absolute;top:16px;right:16px;background:rgba(255,255,255,0.15);border:none;color:#fff;border-radius:50%;width:42px;height:42px;font-size:22px;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+.lightbox-nav{position:absolute;top:50%;transform:translateY(-50%);background:rgba(255,255,255,0.12);border:none;color:#fff;border-radius:50%;width:46px;height:46px;font-size:22px;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+.lightbox-prev{left:12px;}.lightbox-next{right:12px;}
+.lightbox-counter{position:absolute;bottom:20px;color:rgba(255,255,255,0.6);font-size:13px;font-weight:600;}
+
+/* REPORT */
+.report-header-bar{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:var(--surface);border-bottom:1px solid var(--border);flex-shrink:0;}
+.report-content-area{flex:1;overflow-y:auto;padding:16px;background:#f5f3ef;}
+.rep-task{background:#fff;border-radius:12px;margin-bottom:16px;overflow:hidden;border:1px solid #e8e4dc;box-shadow:0 2px 8px rgba(0,0,0,0.06);page-break-inside:avoid;}
+.rep-task-header{padding:13px 15px;}
+.rep-task-title{font-size:15px;font-weight:800;color:#1A1A1E;margin-bottom:5px;}
+.rep-task-meta{font-size:11px;color:#888;display:flex;gap:10px;flex-wrap:wrap;}
+.rep-priority{display:inline-block;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700;}
+.rp-alta{background:#fdecea;color:#E74C3C;}.rp-media{background:#fef3e2;color:#F5A623;}.rp-baja{background:#e8f8f0;color:#27AE60;}
+.rep-photos{display:flex;gap:5px;padding:8px;flex-wrap:wrap;background:#fafaf8;border-top:1px solid #f0ede8;}
+.rep-photo{width:calc(33.3% - 4px);aspect-ratio:4/3;object-fit:cover;border-radius:7px;cursor:pointer;}
+.rep-desc{padding:10px 15px;font-size:12px;color:#555;line-height:1.6;border-top:1px solid #f0ede8;}
+.rep-comments{padding:10px 15px;border-top:1px solid #f0ede8;}
+.rep-comments-title{font-size:10px;font-weight:700;color:#aaa;text-transform:uppercase;margin-bottom:6px;}
+.rep-comment{display:flex;gap:7px;margin-bottom:6px;}
+.rep-ca{width:20px;height:20px;border-radius:50%;font-size:9px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:#fff;}
+.rep-cb{background:#f5f3ef;border-radius:7px;padding:5px 8px;flex:1;}
+.rep-cb-author{font-size:10px;font-weight:700;margin-bottom:1px;}
+.rep-cb-text{font-size:11px;color:#444;line-height:1.4;}
+.rep-stats{display:flex;gap:8px;margin-bottom:16px;}
+.rep-stat{flex:1;background:#fff;border-radius:10px;padding:11px;text-align:center;border:1px solid #e8e4dc;}
+.rep-stat-num{font-size:20px;font-weight:900;}
+.rep-stat-label{font-size:10px;color:#888;text-transform:uppercase;font-weight:600;margin-top:2px;}
+
+/* UPLOAD PROGRESS */
+.upload-progress{font-size:12px;color:var(--accent);margin-top:8px;text-align:center;min-height:18px;font-weight:600;}
+
+/* TOAST */
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);background:#333;color:#fff;padding:12px 20px;border-radius:100px;font-size:14px;font-weight:600;z-index:9999;transition:transform 0.3s cubic-bezier(0.34,1.56,0.64,1);white-space:nowrap;box-shadow:0 4px 20px rgba(0,0,0,0.4);}
+.toast.show{transform:translateX(-50%) translateY(0);}
+.toast.success{background:var(--green);}
+.toast.accent{background:var(--accent);color:#000;}
+
+@media print{
+  body>*:not(#report-overlay){display:none!important;}
+  #report-overlay{position:static!important;background:white!important;display:flex!important;flex-direction:column;}
+  #report-overlay .report-header-bar{display:none!important;}
+  .report-content-area{background:white;color:#1A1A1E;overflow:visible!important;}
+}
+</style>
+</head>
+<body>
+
+<!-- LOADING -->
+<div id="loading-screen" class="screen" style="z-index:999;">
+  <div class="spinner"></div>
+  <div style="font-size:14px;color:var(--text-dim);font-weight:600;margin-top:12px;">Conectando...</div>
+</div>
+
+<!-- USER SCREEN -->
+<div id="user-screen" class="screen hidden" style="z-index:500;">
+  <div class="user-screen-icon" id="us-icon"></div>
+  <div class="screen-title">Administrador de Proyectos</div>
+  <div class="screen-sub">¿Quién eres?</div>
+  <div class="user-list" id="user-list"></div>
+  <div class="add-row">
+    <input class="add-input" id="new-user-name" type="text" placeholder="Nombre del usuario..." maxlength="30">
+    <input class="add-input" id="new-user-pwd" type="password" placeholder="Contraseña...">
+    <button class="add-btn-row" onclick="addUser()">+ Agregar usuario</button>
+  </div>
+</div>
+
+<!-- PROJECT SCREEN -->
+<div id="project-screen" class="screen hidden" style="z-index:400;">
+  <div style="width:100%;max-width:400px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+      <div>
+        <div style="font-size:13px;color:var(--text-dim);font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">Hola, <span id="ps-username"></span></div>
+        <div style="font-size:22px;font-weight:800;margin-top:2px;">📁 Mis Proyectos</div>
+      </div>
+      <button onclick="switchUser()" style="background:var(--surface2);border:1px solid var(--border);color:var(--text-dim);border-radius:12px;padding:8px 12px;font-size:12px;font-weight:600;cursor:pointer;">Cambiar usuario</button>
+    </div>
+    <div class="projects-grid" id="projects-grid"></div>
+    <div style="margin-top:20px;border-top:1px solid var(--border);padding-top:20px;">
+      <div style="font-size:13px;font-weight:700;color:var(--text-dim);margin-bottom:12px;text-transform:uppercase;letter-spacing:0.5px;">+ Nuevo proyecto</div>
+      <input class="add-input" id="new-proj-name" type="text" placeholder="Nombre del proyecto..." maxlength="50" style="margin-bottom:8px;">
+      <div style="display:flex;gap:8px;margin-bottom:8px;">
+        <label style="flex:1;background:var(--surface2);border:1px dashed rgba(255,255,255,0.18);border-radius:12px;color:var(--text-dim);padding:14px;font-size:13px;font-weight:600;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:6px;">
+          <span style="font-size:22px;">📷</span><span>Cámara</span>
+          <input type="file" accept="image/*" capture="environment" onchange="handleProjPhoto(event)" style="display:none;">
+        </label>
+        <label style="flex:1;background:var(--surface2);border:1px dashed rgba(255,255,255,0.18);border-radius:12px;color:var(--text-dim);padding:14px;font-size:13px;font-weight:600;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:6px;">
+          <span style="font-size:22px;">🖼️</span><span>Galería</span>
+          <input type="file" accept="image/*" onchange="handleProjPhoto(event)" style="display:none;">
+        </label>
+      </div>
+      <div class="photo-preview-row" id="proj-photo-preview"></div>
+      <button class="add-btn-row" onclick="addProject()" style="background:var(--accent);color:#000;border-color:var(--accent);margin-top:8px;">+ Crear proyecto</button>
+    </div>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div id="app" class="hidden" style="display:flex;flex-direction:column;min-height:100dvh;">
+  <header class="header">
+    <div class="active-user-bar" onclick="showProjectScreen()">
+      <div class="aub-avatar" id="aub-avatar"></div>
+      <div class="aub-name" id="aub-name"></div>
+      <div class="aub-project" id="aub-project"></div>
+      <div class="aub-change">Cambiar proyecto →</div>
+    </div>
+    <div class="header-inner">
+      <div class="header-top">
+        <div class="logo">
+          <div style="position:relative;cursor:pointer;" onclick="document.getElementById('logo-file-input').click()" title="Toca para cambiar el logo">
+            <div class="logo-icon" id="logo-icon"></div>
+            <div style="position:absolute;bottom:-4px;right:-4px;background:var(--accent);color:#000;border-radius:50%;width:16px;height:16px;font-size:9px;display:flex;align-items:center;justify-content:center;font-weight:800;">✏️</div>
+          </div>
+          <input type="file" id="logo-file-input" accept="image/*" style="display:none;" onchange="changeAppLogo(event)">
+          <div>
+            <div class="logo-text" id="logo-text">Administrador de Proyectos</div>
+            <div class="logo-sub">Control de Pendientes</div>
+          </div>
+        </div>
+        <div class="header-actions">
+          <button class="hbtn" onclick="openReport()" title="Reporte">📋</button>
+          <button class="hbtn" id="btn-admin-users" onclick="openUserAdmin()" title="Administrar usuarios" style="display:none;">👥</button>
+          <button class="hbtn accent" onclick="openModal()">+</button>
+        </div>
+      </div>
+      <div class="tabs">
+        <button class="tab active" id="tab-pending" onclick="switchTab('pending')">📋 Pendientes <span class="tab-badge" id="badge-pending">0</span></button>
+        <button class="tab h-tab" id="tab-history" onclick="switchTab('history')">✅ Completadas <span class="tab-badge" id="badge-history">0</span></button>
+        <button class="tab" id="tab-avances" onclick="switchTab('avances')">📸 Avances <span class="tab-badge" id="badge-avances" style="background:#9B59B6;">0</span></button>
+      </div>
+    </div>
+  </header>
+  <div class="desktop-content">
+  <div class="stats-bar">
+    <div class="stat-card"><div class="stat-num accent" id="stat-total">0</div><div class="stat-label">Total</div></div>
+    <div class="stat-card"><div class="stat-num accent" id="stat-pending-count">0</div><div class="stat-label">Pendientes</div></div>
+    <div class="stat-card"><div class="stat-num green" id="stat-done">0</div><div class="stat-label">Listas</div></div>
+  </div>
+  <div class="progress-wrap">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;">
+      <span style="font-size:12px;font-weight:700;color:var(--text-dim);">Progreso del proyecto</span>
+      <span id="progress-pct" style="font-size:15px;font-weight:900;color:var(--green);">0%</span>
+    </div>
+    <div style="background:var(--surface2);border-radius:100px;height:10px;overflow:hidden;">
+      <div id="progress-bar" style="height:100%;border-radius:100px;background:linear-gradient(90deg,var(--green),#2ECC71);transition:width 0.6s ease;width:0%;"></div>
+    </div>
+    <div id="progress-label" style="font-size:11px;color:var(--text-dim);margin-top:4px;text-align:center;"></div>
+  </div>
+  <main class="main">
+    <div class="section-label" id="section-label">Tareas pendientes</div>
+    <div id="task-list"></div>
+  </main>
+  </div>
+</div>
+
+<!-- PASSWORD MODAL -->
+<div id="pwd-modal" style="position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:600;display:none;align-items:flex-end;backdrop-filter:blur(4px);">
+  <div style="background:var(--surface);border-radius:24px 24px 0 0;width:100%;padding:20px 20px 48px;animation:slideUp 0.3s ease;">
+    <div style="width:38px;height:4px;background:rgba(255,255,255,0.2);border-radius:2px;margin:0 auto 20px;"></div>
+    <div style="text-align:center;margin-bottom:20px;">
+      <div id="pwd-modal-avatar" style="width:52px;height:52px;border-radius:50%;font-size:20px;font-weight:800;display:flex;align-items:center;justify-content:center;margin:0 auto 10px;"></div>
+      <div id="pwd-modal-title" style="font-size:17px;font-weight:800;margin-bottom:4px;"></div>
+      <div style="font-size:13px;color:var(--text-dim);">Ingresa tu contraseña</div>
+    </div>
+    <input class="form-input" id="pwd-input" type="password" placeholder="Contraseña..." style="margin-bottom:8px;" onkeydown="if(event.key==='Enter') window._checkPwd()">
+    <div id="pwd-error" style="color:#E74C3C;font-size:12px;font-weight:600;text-align:center;height:18px;margin-bottom:12px;"></div>
+    <button onclick="window._checkPwd()" style="display:block;width:100%;background:var(--accent);color:#000;border:none;border-radius:14px;padding:16px;font-size:16px;font-weight:800;cursor:pointer;margin-bottom:10px;">Entrar</button>
+    <button onclick="window._closePwd()" style="display:block;width:100%;background:transparent;color:var(--text-dim);border:1px solid var(--border);border-radius:14px;padding:14px;font-size:15px;font-weight:600;cursor:pointer;">Cancelar</button>
+  </div>
+</div>
+
+<!-- MODAL NUEVA TAREA -->
+<div class="modal-overlay" id="modal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">📝 Nueva Tarea</div>
+    <div class="form-group"><label class="form-label">Nombre *</label><input class="form-input" id="f-title" type="text" placeholder="ej. Instalar azulejos del baño" maxlength="80"></div>
+    <div class="form-group"><label class="form-label">Descripción</label><textarea class="form-textarea" id="f-desc" placeholder="Detalles, medidas, instrucciones..."></textarea></div>
+    <div class="form-group"><label class="form-label">Prioridad</label><select class="form-select" id="f-priority"><option value="alta">🔴 Alta</option><option value="media" selected>🟡 Media</option><option value="baja">🟢 Baja</option></select></div>
+    <div class="form-group"><label class="form-label">Área / Zona</label><input class="form-input" id="f-area" type="text" placeholder="ej. Baño, Sala, Cocina"></div>
+    <div class="form-group">
+      <label class="form-label">Fotos</label>
+      <button class="photo-upload-btn" onclick="openFormPicker()"><span style="font-size:22px;">📷</span> Agregar foto</button>
+      <div class="photo-preview-row" id="form-photo-previews"></div>
+      <div class="upload-progress" id="form-upload-progress"></div>
+    </div>
+    <button class="btn-submit" id="btn-save-task" onclick="addTask()">Guardar tarea</button>
+    <button class="btn-cancel" onclick="closeModal()">Cancelar</button>
+  </div>
+</div>
+
+<!-- PHOTO PICKER FORM -->
+<div class="picker-overlay" id="form-picker">
+  <div class="picker-menu">
+    <div class="picker-handle"></div>
+    <div class="picker-title">Agregar foto</div>
+    <div class="picker-opt"><span class="icon">📷</span><span>Tomar foto con cámara</span><input type="file" accept="image/*" capture="environment" onchange="handleFormPhoto(event)"></div>
+    <div class="picker-opt"><span class="icon">🖼️</span><span>Elegir de galería</span><input type="file" accept="image/*" multiple onchange="handleFormPhoto(event)"></div>
+    <button class="picker-cancel" onclick="closeFormPicker()">Cancelar</button>
+  </div>
+</div>
+
+<!-- PHOTO PICKER CARD -->
+<div class="picker-overlay" id="card-picker">
+  <div class="picker-menu">
+    <div class="picker-handle"></div>
+    <div class="picker-title">Agregar foto</div>
+    <div class="picker-opt"><span class="icon">📷</span><span>Tomar foto con cámara</span><input type="file" accept="image/*" capture="environment" onchange="handleCardPhoto(event)"></div>
+    <div class="picker-opt"><span class="icon">🖼️</span><span>Elegir de galería</span><input type="file" accept="image/*" multiple onchange="handleCardPhoto(event)"></div>
+    <button class="picker-cancel" onclick="closeCardPicker()">Cancelar</button>
+  </div>
+</div>
+
+<!-- PHOTO PICKER PROYECTO -->
+<div class="picker-overlay" id="proj-picker" style="z-index:450;">
+  <div class="picker-menu">
+    <div class="picker-handle"></div>
+    <div class="picker-title">Foto del proyecto</div>
+    <div class="picker-opt"><span class="icon">📷</span><span>Tomar foto con cámara</span><input type="file" accept="image/*" capture="environment" onchange="handleProjPhoto(event)"></div>
+    <div class="picker-opt"><span class="icon">🖼️</span><span>Elegir de galería</span><input type="file" accept="image/*" onchange="handleProjPhoto(event)"></div>
+    <button class="picker-cancel" onclick="closeProjPicker()">Cancelar</button>
+  </div>
+</div>
+
+<!-- MODAL NUEVO AVANCE -->
+<div class="modal-overlay" id="avance-modal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">📸 Registrar Avance</div>
+    <div class="form-group">
+      <label class="form-label">Descripción del avance *</label>
+      <textarea class="form-textarea" id="av-desc" placeholder="Describe el avance realizado..." style="min-height:100px;"></textarea>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Fotos</label>
+      <div style="display:flex;gap:8px;">
+        <label style="flex:1;background:var(--surface2);border:1px dashed rgba(255,255,255,0.18);border-radius:12px;color:var(--text-dim);padding:14px;font-size:13px;font-weight:600;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:6px;">
+          <span style="font-size:22px;">📷</span><span>Cámara</span>
+          <input type="file" accept="image/*" capture="environment" onchange="handleAvancePhoto(event)" style="display:none;">
+        </label>
+        <label style="flex:1;background:var(--surface2);border:1px dashed rgba(255,255,255,0.18);border-radius:12px;color:var(--text-dim);padding:14px;font-size:13px;font-weight:600;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:6px;">
+          <span style="font-size:22px;">🖼️</span><span>Galería</span>
+          <input type="file" accept="image/*" multiple onchange="handleAvancePhoto(event)" style="display:none;">
+        </label>
+      </div>
+      <div class="photo-preview-row" id="av-photo-previews"></div>
+      <div class="upload-progress" id="av-upload-progress"></div>
+    </div>
+    <button class="btn-submit" id="btn-save-avance" onclick="saveAvance()">Guardar avance</button>
+    <button class="btn-cancel" onclick="closeAvanceModal()">Cancelar</button>
+  </div>
+</div>
+
+<!-- USER ADMIN MODAL -->
+<div id="user-admin-overlay" style="position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:700;display:none;flex-direction:column;">
+  <div style="background:var(--surface);padding:14px 20px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);flex-shrink:0;">
+    <div style="font-size:16px;font-weight:800;">👥 Administración de Usuarios</div>
+    <button onclick="closeUserAdmin()" style="background:rgba(231,76,60,0.15);border:1px solid rgba(231,76,60,0.3);color:#E74C3C;border-radius:10px;padding:8px 14px;font-size:13px;font-weight:700;cursor:pointer;">✕ Cerrar</button>
+  </div>
+  <div style="flex:1;overflow-y:auto;padding:16px;max-width:600px;margin:0 auto;width:100%;">
+    <div id="user-admin-list"></div>
+    <div style="background:var(--surface);border-radius:16px;padding:20px;border:1px solid var(--border);margin-top:8px;">
+      <div style="font-size:13px;font-weight:800;color:var(--accent);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:16px;">+ Agregar usuario</div>
+      <input class="form-input" id="ua-name" type="text" placeholder="Nombre..." maxlength="30" style="margin-bottom:10px;">
+      <input class="form-input" id="ua-pwd" type="password" placeholder="Contraseña..." style="margin-bottom:10px;">
+      <input class="form-input" id="ua-phone" type="tel" placeholder="Teléfono (ej. +15551234567)..." style="margin-bottom:10px;">
+      <input class="form-input" id="ua-email" type="email" placeholder="Correo electrónico..." style="margin-bottom:10px;">
+      <button onclick="addUserAdmin()" style="width:100%;background:var(--accent);color:#000;border:none;border-radius:12px;padding:14px;font-size:15px;font-weight:800;cursor:pointer;">+ Agregar usuario</button>
+    </div>
+  </div>
+</div>
+
+<!-- EDIT USER MODAL -->
+<div id="edit-user-overlay" style="position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:800;display:none;align-items:flex-end;backdrop-filter:blur(4px);">
+  <div style="background:var(--surface);border-radius:24px 24px 0 0;width:100%;padding:20px 20px 48px;animation:slideUp 0.3s ease;max-width:600px;margin:0 auto;">
+    <div style="width:38px;height:4px;background:rgba(255,255,255,0.2);border-radius:2px;margin:0 auto 20px;"></div>
+    <div style="font-size:17px;font-weight:800;margin-bottom:16px;">✏️ Editar usuario</div>
+    <input type="hidden" id="eu-index">
+    <div style="margin-bottom:10px;"><label class="form-label">Nombre</label><input class="form-input" id="eu-name" type="text" maxlength="30"></div>
+    <div style="margin-bottom:10px;"><label class="form-label">Contraseña</label><input class="form-input" id="eu-pwd" type="password"></div>
+    <div style="margin-bottom:10px;"><label class="form-label">Teléfono</label><input class="form-input" id="eu-phone" type="tel" placeholder="+15551234567"></div>
+    <div style="margin-bottom:16px;"><label class="form-label">Correo electrónico</label><input class="form-input" id="eu-email" type="email" placeholder="correo@ejemplo.com"></div>
+    <button onclick="saveEditUser()" style="display:block;width:100%;background:var(--accent);color:#000;border:none;border-radius:14px;padding:16px;font-size:16px;font-weight:800;cursor:pointer;margin-bottom:10px;">Guardar cambios</button>
+    <button onclick="closeEditUser()" style="display:block;width:100%;background:transparent;color:var(--text-dim);border:1px solid var(--border);border-radius:14px;padding:14px;font-size:15px;font-weight:600;cursor:pointer;">Cancelar</button>
+  </div>
+</div>
+
+<!-- AVANCE EMAIL MODAL -->
+<div id="avance-email-overlay" style="position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:800;display:none;align-items:flex-end;backdrop-filter:blur(4px);">
+  <div style="background:var(--surface);border-radius:24px 24px 0 0;width:100%;padding:20px 20px 48px;animation:slideUp 0.3s ease;max-width:600px;margin:0 auto;">
+    <div style="width:38px;height:4px;background:rgba(255,255,255,0.2);border-radius:2px;margin:0 auto 16px;"></div>
+    <div style="font-size:17px;font-weight:800;margin-bottom:6px;">✉️ Enviar avance por email</div>
+    <div style="font-size:13px;color:var(--text-dim);margin-bottom:16px;">Selecciona los destinatarios:</div>
+    <div id="avance-email-recipients" style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px;max-height:240px;overflow-y:auto;"></div>
+    <div style="margin-bottom:16px;">
+      <label class="form-label">O escribe un correo adicional</label>
+      <input class="form-input" id="avance-email-extra" type="email" placeholder="otro@correo.com">
+    </div>
+    <div id="avance-email-status" style="font-size:12px;text-align:center;min-height:18px;margin-bottom:10px;"></div>
+    <button onclick="sendAvanceEmail()" style="display:block;width:100%;background:var(--accent);color:#000;border:none;border-radius:14px;padding:16px;font-size:16px;font-weight:800;cursor:pointer;margin-bottom:10px;">✉️ Enviar</button>
+    <button onclick="closeAvanceEmail()" style="display:block;width:100%;background:transparent;color:var(--text-dim);border:1px solid var(--border);border-radius:14px;padding:14px;font-size:15px;font-weight:600;cursor:pointer;">Cancelar</button>
+  </div>
+</div>
+
+<!-- AVANCE PHOTO PICKER -->
+<div class="picker-overlay" id="avance-photo-picker" style="z-index:350;">
+  <div class="picker-menu">
+    <div class="picker-handle"></div>
+    <div class="picker-title">Agregar foto al avance</div>
+    <div class="picker-opt"><span class="icon">📷</span><span>Tomar foto con cámara</span><input type="file" accept="image/*" capture="environment" onchange="handleAvancePickerPhoto(event)"></div>
+    <div class="picker-opt"><span class="icon">🖼️</span><span>Elegir de galería</span><input type="file" accept="image/*" multiple onchange="handleAvancePickerPhoto(event)"></div>
+    <button class="picker-cancel" onclick="closeAvancePhotoPicker()">Cancelar</button>
+  </div>
+</div>
+
+<!-- LIGHTBOX -->
+<div class="lightbox" id="lightbox" onclick="if(event.target===this)closeLightbox()">
+  <button class="lightbox-close" onclick="closeLightbox()">✕</button>
+  <button class="lightbox-nav lightbox-prev hidden" id="lb-prev" onclick="_lbNav(-1)">‹</button>
+  <img class="lightbox-img" id="lb-img" src="" alt="">
+  <button class="lightbox-nav lightbox-next hidden" id="lb-next" onclick="_lbNav(1)">›</button>
+  <div class="lightbox-counter" id="lb-counter"></div>
+</div>
+
+<!-- REPORT -->
+<div id="report-overlay" style="position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:400;display:none;flex-direction:column;">
+  <div class="report-header-bar">
+    <div style="font-size:15px;font-weight:800;">📋 Reporte de Pendientes</div>
+    <div style="display:flex;gap:8px;">
+      <button onclick="downloadPDF()" style="background:var(--accent);color:#000;border:none;border-radius:10px;padding:8px 12px;font-size:12px;font-weight:700;cursor:pointer;">⬇️ PDF</button>
+      <button onclick="openEmailModal()" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:10px;padding:8px 12px;font-size:12px;font-weight:700;cursor:pointer;">✉️ Email</button>
+      <button onclick="closeReport()" style="background:rgba(231,76,60,0.15);border:1px solid rgba(231,76,60,0.3);color:#E74C3C;border-radius:10px;padding:8px 12px;font-size:12px;font-weight:700;cursor:pointer;">✕</button>
+    </div>
+  </div>
+  <div class="report-content-area" id="report-content"></div>
+</div>
+
+<!-- EMAIL MODAL -->
+<div id="email-overlay" style="position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:500;display:none;align-items:flex-end;backdrop-filter:blur(4px);">
+  <div style="background:var(--surface);border-radius:24px 24px 0 0;width:100%;padding:20px 20px 48px;animation:slideUp 0.3s ease;">
+    <div style="width:38px;height:4px;background:rgba(255,255,255,0.2);border-radius:2px;margin:0 auto 20px;"></div>
+    <div style="font-size:17px;font-weight:800;margin-bottom:16px;">✉️ Enviar reporte por email</div>
+    <input id="email-to" type="email" placeholder="ejemplo@correo.com" class="form-input" style="margin-bottom:16px;">
+    <div id="email-status" style="font-size:12px;text-align:center;min-height:18px;margin-bottom:12px;"></div>
+    <button onclick="sendEmail()" style="display:block;width:100%;background:var(--accent);color:#000;border:none;border-radius:14px;padding:16px;font-size:16px;font-weight:800;cursor:pointer;margin-bottom:10px;">Enviar</button>
+    <button onclick="closeEmailModal()" style="display:block;width:100%;background:transparent;color:var(--text-dim);border:1px solid var(--border);border-radius:14px;padding:14px;font-size:15px;font-weight:600;cursor:pointer;">Cancelar</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+import { getFirestore, collection, doc, addDoc, updateDoc, deleteDoc, onSnapshot, serverTimestamp, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+
+// ── CLOUDINARY ──
+const CLOUD = 'dhkrtibcv', PRESET = 'uurfgcxv';
+
+// ── ONESIGNAL ──
+const OS_APP_ID = '3f62e591-859b-4103-a370-606d4300c7e3';
+const OS_API_KEY = 'otdo5bidceignyqigiweq3x3n';
+window.OneSignalDeferred = window.OneSignalDeferred || [];
+OneSignalDeferred.push(async function(OneSignal) {
+  await OneSignal.init({ appId: OS_APP_ID, notifyButton: { enable: false }, allowLocalhostAsSecureOrigin: true });
+  window._oneSignalReady = true;
+});
+
+async function sendPush(title, message, imageUrl) {
+  try {
+    const body = { app_id: OS_APP_ID, included_segments: ['Total Subscriptions'], headings: { en: title, es: title }, contents: { en: message, es: message } };
+    if (imageUrl) { body.big_picture = imageUrl; body.chrome_web_image = imageUrl; }
+    await fetch('https://onesignal.com/api/v1/notifications', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Basic ' + OS_API_KEY }, body: JSON.stringify(body) });
+  } catch(e) { console.log('Push error:', e); }
+}
+
+// ── FIREBASE ──
+const fbApp = initializeApp({ apiKey:"AIzaSyCVJ7H6P5KnTlpsRAvP7o0VIeztt1xF9Xg", authDomain:"devine-home.firebaseapp.com", projectId:"devine-home", storageBucket:"devine-home.firebasestorage.app", messagingSenderId:"815507342981", appId:"1:815507342981:web:1ca80bc05b9a40d7e04bec" });
+const db = getFirestore(fbApp);
+
+// ── HELPERS ──
+const COLORS = ['#F5A623','#3498DB','#E74C3C','#9B59B6','#1ABC9C','#E67E22','#2ECC71','#E91E63'];
+function uColor(n) { if(!n)return'#888'; let h=0; for(let c of n)h=(h*31+c.charCodeAt(0))&0xFFFFFF; return COLORS[Math.abs(h)%COLORS.length]; }
+function uInit(n) { if(!n)return'?'; return n.split(' ').map(w=>w[0]||'').join('').toUpperCase().slice(0,2); }
+function esc(s) { if(!s)return''; return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;'); }
+function fDate(v) { if(!v)return''; const d=v.toDate?v.toDate():new Date(v); return d.toLocaleDateString('es-MX',{day:'numeric',month:'short',year:'2-digit'}); }
+function pLabel(p) { return{alta:'🔴 Alta',media:'🟡 Media',baja:'🟢 Baja'}[p]||p; }
+function showToast(msg,type='') { const t=document.getElementById('toast'); t.textContent=msg; t.className='toast '+type; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2800); }
+
+async function uploadCloudinary(file) {
+  const fd=new FormData(); fd.append('file',file); fd.append('upload_preset',PRESET);
+  const r=await fetch(`https://api.cloudinary.com/v1_1/${CLOUD}/image/upload`,{method:'POST',body:fd});
+  if(!r.ok)throw new Error('Upload failed');
+  return (await r.json()).secure_url;
+}
+
+// ── STATE ──
+const DEFAULT_USERS = [{ name:'Humberto', pwd:'Devine5062211@' },{ name:'Gely', pwd:'gely123' },{ name:'Veronica', pwd:'vero123' }];
+let users = [];
+
+let currentUser = null;
+let currentProject = null; // { id, name, photo }
+let projects = [];
+let tasks = [];
+let currentTab = 'pending';
+let formPhotoFiles = [], formPhotoPreviews = [];
+let cardPickerTaskId = null;
+let projPhotoFile = null, projPhotoPreview = null;
+let _pendingLoginUser = null;
+let _photoMap = {};
+let avances = [];
+let avPhotoFiles = [], avPhotoPreviews = [];
+let appLogoSrc = localStorage.getItem('app-logo') || 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj4KICA8ZGVmcz4KICAgIDxsaW5lYXJHcmFkaWVudCBpZD0iYmciIHgxPSIwJSIgeTE9IjAlIiB4Mj0iMTAwJSIgeTI9IjEwMCUiPgogICAgICA8c3RvcCBvZmZzZXQ9IjAlIiBzdHlsZT0ic3RvcC1jb2xvcjojRjVBNjIzO3N0b3Atb3BhY2l0eToxIiAvPgogICAgICA8c3RvcCBvZmZzZXQ9IjEwMCUiIHN0eWxlPSJzdG9wLWNvbG9yOiNFODg5MEE7c3RvcC1vcGFjaXR5OjEiIC8+CiAgICA8L2xpbmVhckdyYWRpZW50PgogICAgPGxpbmVhckdyYWRpZW50IGlkPSJzaGluZSIgeDE9IjAlIiB5MT0iMCUiIHgyPSIwJSIgeTI9IjEwMCUiPgogICAgICA8c3RvcCBvZmZzZXQ9IjAlIiBzdHlsZT0ic3RvcC1jb2xvcjojZmZmZmZmO3N0b3Atb3BhY2l0eTowLjI1IiAvPgogICAgICA8c3RvcCBvZmZzZXQ9IjEwMCUiIHN0eWxlPSJzdG9wLWNvbG9yOiNmZmZmZmY7c3RvcC1vcGFjaXR5OjAiIC8+CiAgICA8L2xpbmVhckdyYWRpZW50PgogIDwvZGVmcz4KICA8IS0tIEJhY2tncm91bmQgLS0+CiAgPHJlY3Qgd2lkdGg9IjEwMCIgaGVpZ2h0PSIxMDAiIHJ4PSIyMiIgZmlsbD0idXJsKCNiZykiLz4KICA8IS0tIFNoaW5lIG92ZXJsYXkgLS0+CiAgPHJlY3Qgd2lkdGg9IjEwMCIgaGVpZ2h0PSI1MCIgcng9IjIyIiBmaWxsPSJ1cmwoI3NoaW5lKSIvPgogIDwhLS0gQ2xpcGJvYXJkIGJhc2UgLS0+CiAgPHJlY3QgeD0iMjIiIHk9IjI4IiB3aWR0aD0iNTYiIGhlaWdodD0iNTIiIHJ4PSI2IiBmaWxsPSJyZ2JhKDAsMCwwLDAuMTgpIi8+CiAgPHJlY3QgeD0iMjIiIHk9IjI2IiB3aWR0aD0iNTYiIGhlaWdodD0iNTIiIHJ4PSI2IiBmaWxsPSJ3aGl0ZSIgb3BhY2l0eT0iMC45NSIvPgogIDwhLS0gQ2xpcGJvYXJkIHRvcCBjbGlwIC0tPgogIDxyZWN0IHg9IjM4IiB5PSIyMCIgd2lkdGg9IjI0IiBoZWlnaHQ9IjE0IiByeD0iNCIgZmlsbD0icmdiYSgwLDAsMCwwLjE4KSIvPgogIDxyZWN0IHg9IjM4IiB5PSIxOSIgd2lkdGg9IjI0IiBoZWlnaHQ9IjEzIiByeD0iNCIgZmlsbD0iI0U4ODkwQSIvPgogIDxjaXJjbGUgY3g9IjUwIiBjeT0iMjUiIHI9IjMiIGZpbGw9IndoaXRlIiBvcGFjaXR5PSIwLjYiLz4KICA8IS0tIENoZWNrbGlzdCBsaW5lcyAtLT4KICA8IS0tIExpbmUgMSAtIGNoZWNrZWQgLS0+CiAgPGNpcmNsZSBjeD0iMzIiIGN5PSI0MSIgcj0iNCIgZmlsbD0iI0Y1QTYyMyIvPgogIDxwYXRoIGQ9Ik0zMCA0MSBMMzEuNSA0Mi44IEwzNC41IDM5LjUiIHN0cm9rZT0id2hpdGUiIHN0cm9rZS13aWR0aD0iMS41IiBmaWxsPSJub25lIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiLz4KICA8cmVjdCB4PSI0MCIgeT0iMzkiIHdpZHRoPSIyOCIgaGVpZ2h0PSIzIiByeD0iMS41IiBmaWxsPSIjRTg4OTBBIiBvcGFjaXR5PSIwLjciLz4KICA8IS0tIExpbmUgMiAtIGNoZWNrZWQgLS0+CiAgPGNpcmNsZSBjeD0iMzIiIGN5PSI1MyIgcj0iNCIgZmlsbD0iI0Y1QTYyMyIvPgogIDxwYXRoIGQ9Ik0zMCA1MyBMMzEuNSA1NC44IEwzNC41IDUxLjUiIHN0cm9rZT0id2hpdGUiIHN0cm9rZS13aWR0aD0iMS41IiBmaWxsPSJub25lIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiLz4KICA8cmVjdCB4PSI0MCIgeT0iNTEiIHdpZHRoPSIyMiIgaGVpZ2h0PSIzIiByeD0iMS41IiBmaWxsPSIjRTg4OTBBIiBvcGFjaXR5PSIwLjciLz4KICA8IS0tIExpbmUgMyAtIHVuY2hlY2tlZCAtLT4KICA8Y2lyY2xlIGN4PSIzMiIgY3k9IjY1IiByPSI0IiBmaWxsPSJub25lIiBzdHJva2U9IiNGNUE2MjMiIHN0cm9rZS13aWR0aD0iMS41Ii8+CiAgPHJlY3QgeD0iNDAiIHk9IjYzIiB3aWR0aD0iMTgiIGhlaWdodD0iMyIgcng9IjEuNSIgZmlsbD0iI2NjYyIgb3BhY2l0eT0iMC44Ii8+Cjwvc3ZnPg==';
+
+const ADMIN_USER = 'Humberto';
+const ADMIN_PWD = 'Devine5062211@';
+
+// ── USER SCREEN ──
+function showScreen(id) {
+  ['loading-screen','user-screen','project-screen','app'].forEach(s => {
+    const el = document.getElementById(s);
+    if(s==='app') { el.style.display = s===id ? 'flex' : 'none'; el.classList.toggle('hidden', s!==id); }
+    else el.classList.toggle('hidden', s!==id);
+  });
+}
+
+function renderUserScreen() {
+  // Set logo image
+  const iconEl = document.getElementById('us-icon');
+  iconEl.innerHTML = `<img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj4KICA8ZGVmcz4KICAgIDxsaW5lYXJHcmFkaWVudCBpZD0iYmciIHgxPSIwJSIgeTE9IjAlIiB4Mj0iMTAwJSIgeTI9IjEwMCUiPgogICAgICA8c3RvcCBvZmZzZXQ9IjAlIiBzdHlsZT0ic3RvcC1jb2xvcjojRjVBNjIzO3N0b3Atb3BhY2l0eToxIiAvPgogICAgICA8c3RvcCBvZmZzZXQ9IjEwMCUiIHN0eWxlPSJzdG9wLWNvbG9yOiNFODg5MEE7c3RvcC1vcGFjaXR5OjEiIC8+CiAgICA8L2xpbmVhckdyYWRpZW50PgogICAgPGxpbmVhckdyYWRpZW50IGlkPSJzaGluZSIgeDE9IjAlIiB5MT0iMCUiIHgyPSIwJSIgeTI9IjEwMCUiPgogICAgICA8c3RvcCBvZmZzZXQ9IjAlIiBzdHlsZT0ic3RvcC1jb2xvcjojZmZmZmZmO3N0b3Atb3BhY2l0eTowLjI1IiAvPgogICAgICA8c3RvcCBvZmZzZXQ9IjEwMCUiIHN0eWxlPSJzdG9wLWNvbG9yOiNmZmZmZmY7c3RvcC1vcGFjaXR5OjAiIC8+CiAgICA8L2xpbmVhckdyYWRpZW50PgogIDwvZGVmcz4KICA8IS0tIEJhY2tncm91bmQgLS0+CiAgPHJlY3Qgd2lkdGg9IjEwMCIgaGVpZ2h0PSIxMDAiIHJ4PSIyMiIgZmlsbD0idXJsKCNiZykiLz4KICA8IS0tIFNoaW5lIG92ZXJsYXkgLS0+CiAgPHJlY3Qgd2lkdGg9IjEwMCIgaGVpZ2h0PSI1MCIgcng9IjIyIiBmaWxsPSJ1cmwoI3NoaW5lKSIvPgogIDwhLS0gQ2xpcGJvYXJkIGJhc2UgLS0+CiAgPHJlY3QgeD0iMjIiIHk9IjI4IiB3aWR0aD0iNTYiIGhlaWdodD0iNTIiIHJ4PSI2IiBmaWxsPSJyZ2JhKDAsMCwwLDAuMTgpIi8+CiAgPHJlY3QgeD0iMjIiIHk9IjI2IiB3aWR0aD0iNTYiIGhlaWdodD0iNTIiIHJ4PSI2IiBmaWxsPSJ3aGl0ZSIgb3BhY2l0eT0iMC45NSIvPgogIDwhLS0gQ2xpcGJvYXJkIHRvcCBjbGlwIC0tPgogIDxyZWN0IHg9IjM4IiB5PSIyMCIgd2lkdGg9IjI0IiBoZWlnaHQ9IjE0IiByeD0iNCIgZmlsbD0icmdiYSgwLDAsMCwwLjE4KSIvPgogIDxyZWN0IHg9IjM4IiB5PSIxOSIgd2lkdGg9IjI0IiBoZWlnaHQ9IjEzIiByeD0iNCIgZmlsbD0iI0U4ODkwQSIvPgogIDxjaXJjbGUgY3g9IjUwIiBjeT0iMjUiIHI9IjMiIGZpbGw9IndoaXRlIiBvcGFjaXR5PSIwLjYiLz4KICA8IS0tIENoZWNrbGlzdCBsaW5lcyAtLT4KICA8IS0tIExpbmUgMSAtIGNoZWNrZWQgLS0+CiAgPGNpcmNsZSBjeD0iMzIiIGN5PSI0MSIgcj0iNCIgZmlsbD0iI0Y1QTYyMyIvPgogIDxwYXRoIGQ9Ik0zMCA0MSBMMzEuNSA0Mi44IEwzNC41IDM5LjUiIHN0cm9rZT0id2hpdGUiIHN0cm9rZS13aWR0aD0iMS41IiBmaWxsPSJub25lIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiLz4KICA8cmVjdCB4PSI0MCIgeT0iMzkiIHdpZHRoPSIyOCIgaGVpZ2h0PSIzIiByeD0iMS41IiBmaWxsPSIjRTg4OTBBIiBvcGFjaXR5PSIwLjciLz4KICA8IS0tIExpbmUgMiAtIGNoZWNrZWQgLS0+CiAgPGNpcmNsZSBjeD0iMzIiIGN5PSI1MyIgcj0iNCIgZmlsbD0iI0Y1QTYyMyIvPgogIDxwYXRoIGQ9Ik0zMCA1MyBMMzEuNSA1NC44IEwzNC41IDUxLjUiIHN0cm9rZT0id2hpdGUiIHN0cm9rZS13aWR0aD0iMS41IiBmaWxsPSJub25lIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiLz4KICA8cmVjdCB4PSI0MCIgeT0iNTEiIHdpZHRoPSIyMiIgaGVpZ2h0PSIzIiByeD0iMS41IiBmaWxsPSIjRTg4OTBBIiBvcGFjaXR5PSIwLjciLz4KICA8IS0tIExpbmUgMyAtIHVuY2hlY2tlZCAtLT4KICA8Y2lyY2xlIGN4PSIzMiIgY3k9IjY1IiByPSI0IiBmaWxsPSJub25lIiBzdHJva2U9IiNGNUE2MjMiIHN0cm9rZS13aWR0aD0iMS41Ii8+CiAgPHJlY3QgeD0iNDAiIHk9IjYzIiB3aWR0aD0iMTgiIGhlaWdodD0iMyIgcng9IjEuNSIgZmlsbD0iI2NjYyIgb3BhY2l0eT0iMC44Ii8+Cjwvc3ZnPg==" style="width:100px;height:100px;border-radius:20px;box-shadow:0 8px 32px rgba(245,166,35,0.4);">`;
+
+  document.getElementById('user-list').innerHTML = users.map(u => `
+    <div style="display:flex;align-items:center;gap:8px;">
+      <button class="user-btn" style="flex:1;" onclick="window._sel('${esc(u.name)}')">
+        <div class="user-avatar" style="background:${uColor(u.name)};color:#fff;">${uInit(u.name)}</div>
+        <div><div class="user-info-name">${esc(u.name)}</div><div class="user-info-role">🔐 Acceso con contraseña</div></div>
+      </button>
+      <button onclick="window._delUser('${esc(u.name)}')" style="background:rgba(231,76,60,0.15);border:1px solid rgba(231,76,60,0.3);color:#E74C3C;border-radius:12px;width:44px;height:44px;font-size:17px;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;">🗑️</button>
+    </div>`).join('');
+}
+
+window._sel = function(name) {
+  _pendingLoginUser = name;
+  const av = document.getElementById('pwd-modal-avatar');
+  av.textContent = uInit(name); av.style.background = uColor(name); av.style.color = '#fff';
+  document.getElementById('pwd-modal-title').textContent = 'Acceso ' + name;
+  document.getElementById('pwd-input').value = '';
+  document.getElementById('pwd-error').textContent = '';
+  document.getElementById('pwd-modal').style.display = 'flex';
+  setTimeout(()=>document.getElementById('pwd-input').focus(),300);
+};
+
+window._checkPwd = function() {
+  const val = document.getElementById('pwd-input').value;
+  const u = users.find(u=>u.name===_pendingLoginUser);
+  if(u && val===u.pwd) {
+    const name = _pendingLoginUser;
+    window._closePwd();
+    window._doLogin(name);
+  } else {
+    document.getElementById('pwd-error').textContent = '❌ Contraseña incorrecta';
+    document.getElementById('pwd-input').value = '';
+    document.getElementById('pwd-input').focus();
+  }
+};
+window._closePwd = function() { document.getElementById('pwd-modal').style.display='none'; _pendingLoginUser=null; };
+
+window._doLogin = function(name) {
+  currentUser = name;
+  document.getElementById('ps-username').textContent = name;
+  // Auto-select first project if available, else show project screen
+  if(projects.length > 0) {
+    currentProject = projects[0];
+    showScreen('app');
+    updateAppHeader();
+    render();
+  } else {
+    showScreen('project-screen');
+    renderProjectScreen();
+  }
+  setTimeout(()=>{ try{ if(window._oneSignalReady) window.OneSignal.login(name); }catch(e){} },1500);
+};
+
+window._delUser = function(name) {
+  if(users.length<=1){showToast('⚠️ Debe haber al menos un usuario');return;}
+  const pwd=prompt('Ingresa la contraseña de Humberto para borrar este usuario:');
+  if(pwd===null)return;
+  if(pwd!==ADMIN_PWD){showToast('❌ Contraseña incorrecta');return;}
+  if(!confirm(`¿Borrar el usuario "${name}"?`))return;
+  users=users.filter(u=>u.name!==name);
+  setDoc(doc(db,'config','users'),{list:users});
+  showToast('🗑️ Usuario eliminado');
+};
+
+window.addUser = function() {
+  const name=document.getElementById('new-user-name').value.trim();
+  const pwd=document.getElementById('new-user-pwd').value.trim();
+  if(!name){showToast('⚠️ Escribe el nombre');return;}
+  if(!pwd){showToast('⚠️ Escribe una contraseña');return;}
+  if(users.find(u=>u.name===name)){showToast('⚠️ Usuario ya existe');return;}
+  users.push({name,pwd});
+  setDoc(doc(db,'config','users'),{list:users});
+  document.getElementById('new-user-name').value='';
+  document.getElementById('new-user-pwd').value='';
+  showToast('👤 Usuario agregado','success');
+};
+
+window.switchUser = function() { currentUser=null; currentProject=null; showScreen('user-screen'); renderUserScreen(); };
+window.showProjectScreen = function() { showScreen('project-screen'); renderProjectScreen(); };
+
+// ── PROJECTS ──
+function renderProjectScreen() {
+  const grid = document.getElementById('projects-grid');
+  if(projects.length===0) {
+    grid.innerHTML='<div style="text-align:center;color:var(--text-dim);font-size:13px;padding:20px;">No tienes proyectos aún.<br>Crea el primero abajo. 👇</div>';
+    return;
+  }
+  grid.innerHTML = projects.map(p => {
+    const ptasks = tasks.filter(t=>t.projectId===p.id);
+    const pdone = ptasks.filter(t=>t.done).length;
+    const ppending = ptasks.filter(t=>!t.done).length;
+    return `
+    <div style="display:flex;align-items:center;gap:8px;">
+      <div class="project-card" style="flex:1;" onclick="selectProject('${p.id}')">
+        <div style="position:relative;flex-shrink:0;">
+          ${p.photo ? `<img class="project-thumb" src="${p.photo}" loading="lazy">` : `<div class="project-thumb-placeholder">🏗️</div>`}
+          <label style="position:absolute;bottom:4px;right:4px;background:rgba(0,0,0,0.65);border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:11px;" title="Cambiar foto" onclick="event.stopPropagation()">
+            ✏️
+            <input type="file" accept="image/*" style="display:none;" onchange="changeProjectPhoto(event,'${p.id}')">
+          </label>
+        </div>
+        <div class="project-info">
+          <div class="project-name">${esc(p.name)}</div>
+          <div class="project-stats">⏳ ${ppending} pendientes · ✅ ${pdone} completadas</div>
+        </div>
+      </div>
+      ${currentUser===ADMIN_USER ? `<button class="project-del" onclick="deleteProject('${p.id}')">🗑️</button>` : ''}
+    </div>`;
+  }).join('');
+}
+
+window.changeProjectPhoto = async function(e, projectId) {
+  const file = e.target.files[0]; if(!file) return;
+  showToast('⏳ Subiendo foto...', 'accent');
+  try {
+    const url = await uploadCloudinary(file);
+    await updateDoc(doc(db,'projects',projectId), { photo: url });
+    showToast('✅ Foto actualizada', 'success');
+  } catch(err) { showToast('❌ Error al subir foto'); console.error(err); }
+  e.target.value = '';
+};
+
+window.selectProject = function(id) {
+  currentProject = projects.find(p=>p.id===id);
+  if(!currentProject)return;
+  showScreen('app');
+  updateAppHeader();
+  render();
+};
+
+window.deleteProject = async function(id) {
+  if(!confirm('¿Eliminar este proyecto y todas sus tareas?'))return;
+  try {
+    const ptasks = tasks.filter(t=>t.projectId===id);
+    await Promise.all(ptasks.map(t=>deleteDoc(doc(db,'tasks',t.id))));
+    await deleteDoc(doc(db,'projects',id));
+    showToast('🗑️ Proyecto eliminado');
+  } catch(e){showToast('❌ Error');console.error(e);}
+};
+
+window.openProjPhotoPicker = function() { document.getElementById('proj-picker').classList.add('open'); };
+window.closeProjPicker = function() { document.getElementById('proj-picker').classList.remove('open'); };
+window.changeAppLogo = function(e) {
+  const file = e.target.files[0]; if(!file) return;
+  const r = new FileReader();
+  r.onload = ev => {
+    appLogoSrc = ev.target.result;
+    localStorage.setItem('app-logo', appLogoSrc);
+    const li = document.getElementById('logo-icon');
+    li.innerHTML = `<img id="app-logo-img" src="${appLogoSrc}" style="width:100%;height:100%;object-fit:cover;border-radius:9px;">`;
+    showToast('✅ Logo actualizado', 'success');
+  };
+  r.readAsDataURL(file);
+  e.target.value = '';
+};
+
+window.handleProjPhoto = function(e) {
+  const file=e.target.files[0]; if(!file)return;
+  projPhotoFile=file;
+  const r=new FileReader();
+  r.onload=ev=>{ projPhotoPreview=ev.target.result; document.getElementById('proj-photo-preview').innerHTML=`<div class="photo-preview-thumb"><img src="${ev.target.result}"><button onclick="projPhotoFile=null;projPhotoPreview=null;document.getElementById('proj-photo-preview').innerHTML=''">✕</button></div>`; };
+  r.readAsDataURL(file);
+  closeProjPicker(); e.target.value='';
+};
+
+window.addProject = async function() {
+  const name=document.getElementById('new-proj-name').value.trim();
+  if(!name){showToast('⚠️ Escribe el nombre del proyecto');return;}
+  showToast('⏳ Creando proyecto...','accent');
+  try {
+    let photoUrl=null;
+    if(projPhotoFile) photoUrl=await uploadCloudinary(projPhotoFile);
+    await addDoc(collection(db,'projects'),{ name, photo:photoUrl, createdBy:currentUser, createdAt:serverTimestamp() });
+    document.getElementById('new-proj-name').value='';
+    projPhotoFile=null; projPhotoPreview=null;
+    document.getElementById('proj-photo-preview').innerHTML='';
+    showToast('✅ Proyecto creado','success');
+  } catch(e){showToast('❌ Error');console.error(e);}
+};
+
+function updateAppHeader() {
+  if(!currentProject)return;
+  const li=document.getElementById('logo-icon');
+  li.innerHTML = `<img id="app-logo-img" src="${appLogoSrc}" style="width:100%;height:100%;object-fit:cover;border-radius:9px;">`;
+  document.getElementById('logo-text').textContent = 'Administrador de Proyectos';
+  // Show admin button only for Humberto
+  const adminBtn = document.getElementById('btn-admin-users');
+  if (adminBtn) adminBtn.style.display = currentUser === ADMIN_USER ? 'flex' : 'none';
+  document.getElementById('aub-project').textContent = '📁 '+currentProject.name;
+  const av=document.getElementById('aub-avatar');
+  av.textContent=uInit(currentUser); av.style.background=uColor(currentUser); av.style.color='#fff';
+  document.getElementById('aub-name').textContent=currentUser;
+}
+
+// ── PHOTO PICKERS ──
+window.openFormPicker=()=>document.getElementById('form-picker').classList.add('open');
+window.closeFormPicker=()=>document.getElementById('form-picker').classList.remove('open');
+window.openCardPicker=id=>{cardPickerTaskId=id;document.getElementById('card-picker').classList.add('open');};
+window.closeCardPicker=()=>{document.getElementById('card-picker').classList.remove('open');cardPickerTaskId=null;};
+
+window.handleFormPhoto=function(e){
+  Array.from(e.target.files).forEach(file=>{
+    formPhotoFiles.push(file);
+    const r=new FileReader(); r.onload=ev=>{formPhotoPreviews.push(ev.target.result);renderFormPreviews();}; r.readAsDataURL(file);
+  });
+  closeFormPicker(); e.target.value='';
+};
+function renderFormPreviews(){
+  document.getElementById('form-photo-previews').innerHTML=formPhotoPreviews.map((s,i)=>`<div class="photo-preview-thumb"><img src="${s}"><button onclick="window._rmPhoto(${i})">✕</button></div>`).join('');
+}
+window._rmPhoto=function(i){formPhotoFiles.splice(i,1);formPhotoPreviews.splice(i,1);renderFormPreviews();};
+
+window.handleCardPhotoInline = async function(e, taskId) {
+  const files = Array.from(e.target.files);
+  if(!files.length) return;
+  showToast('⏳ Subiendo foto...', 'accent');
+  try {
+    const urls = await Promise.all(files.map(f => uploadCloudinary(f)));
+    const snap = await getDoc(doc(db,'tasks',taskId));
+    const existing = snap.data().photos || [];
+    await updateDoc(doc(db,'tasks',taskId), { photos: [...existing, ...urls] });
+    showToast('📷 Foto guardada', 'accent');
+  } catch(e) { showToast('❌ Error'); console.error(e); }
+  e.target.value = '';
+};
+
+window.handleCardPhoto=async function(e){
+  const files=Array.from(e.target.files); const tid=cardPickerTaskId;
+  closeCardPicker(); if(!files.length||!tid)return;
+  showToast('⏳ Subiendo foto...','accent');
+  try{
+    const urls=await Promise.all(files.map(f=>uploadCloudinary(f)));
+    const snap=await getDoc(doc(db,'tasks',tid));
+    const existing=snap.data().photos||[];
+    await updateDoc(doc(db,'tasks',tid),{photos:[...existing,...urls]});
+    showToast('📷 Foto guardada','accent');
+  }catch(e){showToast('❌ Error');console.error(e);}
+  e.target.value='';
+};
+
+// ── MODAL TAREA ──
+window.openModal=function(){ document.getElementById('modal').classList.add('open'); setTimeout(()=>document.getElementById('f-title').focus(),300); };
+window.closeModal=function(){
+  document.getElementById('modal').classList.remove('open');
+  ['f-title','f-desc','f-area'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('f-priority').value='media';
+  document.getElementById('btn-save-task').disabled=false;
+  document.getElementById('form-upload-progress').textContent='';
+  formPhotoFiles=[]; formPhotoPreviews=[]; renderFormPreviews();
+};
+
+window.addTask=async function(){
+  if(!currentProject){showToast('⚠️ Selecciona un proyecto primero');return;}
+  const title=document.getElementById('f-title').value.trim();
+  if(!title){showToast('⚠️ Escribe el nombre de la tarea');return;}
+  const btn=document.getElementById('btn-save-task');
+  const prog=document.getElementById('form-upload-progress');
+  btn.disabled=true;
+  try{
+    let photoUrls=[];
+    if(formPhotoFiles.length>0){ prog.textContent=`⏳ Subiendo ${formPhotoFiles.length} foto(s)...`; photoUrls=await Promise.all(formPhotoFiles.map(f=>uploadCloudinary(f))); }
+    const area=document.getElementById('f-area').value.trim();
+    await addDoc(collection(db,'tasks'),{ title, desc:document.getElementById('f-desc').value.trim(), priority:document.getElementById('f-priority').value, area, photos:photoUrls, comments:[], done:false, createdAt:serverTimestamp(), createdBy:currentUser, doneAt:null, doneBy:null, projectId:currentProject.id });
+    sendPush('🏗️ Nueva tarea — '+currentProject.name, `${currentUser} agregó: "${title}"${area?' en '+area:''}`, photoUrls[0]||null);
+    showToast('✅ Tarea agregada','success'); closeModal();
+  }catch(e){ showToast('❌ Error al guardar'); console.error(e); btn.disabled=false; prog.textContent=''; }
+};
+
+// ── COMMENTS ──
+window.addComment=async function(taskId,inputEl){
+  const text=inputEl.value.trim(); if(!text)return; inputEl.value='';
+  try{
+    const snap=await getDoc(doc(db,'tasks',taskId));
+    const comments=[...(snap.data().comments||[]),{text,user:currentUser,time:new Date().toISOString()}];
+    await updateDoc(doc(db,'tasks',taskId),{comments});
+    setTimeout(()=>{const b=document.getElementById(`comm-body-${taskId}`);if(b)b.style.display='block';},100);
+  }catch(e){showToast('❌ Error');console.error(e);}
+};
+
+// ── TASK ACTIONS ──
+window.toggleDone=async function(taskId){
+  const t=tasks.find(t=>t.id===taskId); if(!t)return;
+  const newDone=!t.done;
+  try{
+    await updateDoc(doc(db,'tasks',taskId),{done:newDone,doneAt:newDone?new Date().toISOString():null,doneBy:newDone?currentUser:null});
+    if(newDone){
+      const comments=(t.comments||[]).slice(-2).map(c=>`${c.user}: ${c.text}`).join(' / ');
+      sendPush('✅ Tarea completada — '+currentProject.name, `${currentUser} completó: "${t.title}"${comments?' | '+comments:''}`, (t.photos||[])[0]||null);
+    }
+    showToast(newDone?'✅ ¡Tarea completada!':'🔄 Tarea reactivada',newDone?'success':'');
+  }catch(e){showToast('❌ Error');console.error(e);}
+};
+
+window.deleteTask=async function(taskId){
+  if(!confirm('¿Eliminar esta tarea?'))return;
+  try{await deleteDoc(doc(db,'tasks',taskId));showToast('🗑️ Tarea eliminada');}
+  catch(e){showToast('❌ Error');console.error(e);}
+};
+
+window.deleteTaskPhoto=async function(taskId,photoUrl){
+  if(!confirm('¿Eliminar esta foto?'))return;
+  try{
+    const snap=await getDoc(doc(db,'tasks',taskId));
+    const photos=(snap.data().photos||[]).filter(u=>u!==photoUrl);
+    await updateDoc(doc(db,'tasks',taskId),{photos});
+    showToast('🗑️ Foto eliminada');
+  }catch(e){showToast('❌ Error');console.error(e);}
+};
+
+window.switchTab=function(tab){
+  currentTab=tab;
+  document.getElementById('tab-pending').classList.toggle('active',tab==='pending');
+  document.getElementById('tab-history').classList.toggle('active',tab==='history');
+  document.getElementById('tab-avances').classList.toggle('active',tab==='avances');
+  if(tab==='avances') renderAvances();
+  else render();
+};
+
+window.toggleComments=function(taskId,forceOpen){
+  const body=document.getElementById(`comm-body-${taskId}`);
+  const isOpen=body.style.display!=='none';
+  if(forceOpen){body.style.display='block';}
+  else{body.style.display=isOpen?'none':'block';}
+  if(!isOpen||forceOpen) setTimeout(()=>{const inp=document.getElementById(`comm-input-${taskId}`);if(inp)inp.focus();},100);
+};
+
+// ── LIGHTBOX ──
+let lbPhotos=[],lbIndex=0;
+window.openLightbox=function(taskId,index){ lbPhotos=_photoMap[taskId]||[]; if(!lbPhotos.length)return; lbIndex=index; _lbShow(); document.getElementById('lightbox').classList.add('open'); document.body.style.overflow='hidden'; };
+window.closeLightbox=function(){ document.getElementById('lightbox').classList.remove('open'); document.body.style.overflow=''; };
+window._lbNav=function(dir){ lbIndex=(lbIndex+dir+lbPhotos.length)%lbPhotos.length; _lbShow(); };
+function _lbShow(){ document.getElementById('lb-img').src=lbPhotos[lbIndex]; const m=lbPhotos.length>1; document.getElementById('lb-prev').classList.toggle('hidden',!m); document.getElementById('lb-next').classList.toggle('hidden',!m); document.getElementById('lb-counter').textContent=m?`${lbIndex+1} / ${lbPhotos.length}`:''; }
+(function(){ let sx=0; const lb=document.getElementById('lightbox'); lb.addEventListener('touchstart',e=>{sx=e.touches[0].clientX;},{passive:true}); lb.addEventListener('touchend',e=>{const dx=e.changedTouches[0].clientX-sx; if(Math.abs(dx)>50&&lbPhotos.length>1)window._lbNav(dx<0?1:-1);},{passive:true}); })();
+
+// ── AVANCES ──
+window.openAvanceModal = function() {
+  document.getElementById('avance-modal').classList.add('open');
+  setTimeout(() => document.getElementById('av-desc').focus(), 300);
+};
+window.closeAvanceModal = function() {
+  document.getElementById('avance-modal').classList.remove('open');
+  document.getElementById('av-desc').value = '';
+  document.getElementById('btn-save-avance').disabled = false;
+  document.getElementById('av-upload-progress').textContent = '';
+  avPhotoFiles = []; avPhotoPreviews = [];
+  document.getElementById('av-photo-previews').innerHTML = '';
+};
+window.handleAvancePhoto = function(e) {
+  Array.from(e.target.files).forEach(file => {
+    avPhotoFiles.push(file);
+    const r = new FileReader();
+    r.onload = ev => { avPhotoPreviews.push(ev.target.result); renderAvPreviews(); };
+    r.readAsDataURL(file);
+  });
+  e.target.value = '';
+};
+
+function renderAvPreviews() {
+  document.getElementById('av-photo-previews').innerHTML = avPhotoPreviews.map((s, i) =>
+    `<div class="photo-preview-thumb"><img src="${s}"><button onclick="avPhotoFiles.splice(${i},1);avPhotoPreviews.splice(${i},1);renderAvPreviews();">✕</button></div>`
+  ).join('');
+}
+window.renderAvPreviews = renderAvPreviews;
+
+window.saveAvance = async function() {
+  const desc = document.getElementById('av-desc').value.trim();
+  if (!desc) { showToast('⚠️ Escribe la descripción del avance'); return; }
+  if (!currentProject) return;
+  const btn = document.getElementById('btn-save-avance');
+  const prog = document.getElementById('av-upload-progress');
+  btn.disabled = true;
+  try {
+    let photoUrls = [];
+    if (avPhotoFiles.length > 0) {
+      prog.textContent = `⏳ Subiendo ${avPhotoFiles.length} foto(s)...`;
+      photoUrls = await Promise.all(avPhotoFiles.map(f => uploadCloudinary(f)));
+      prog.textContent = `✅ ${photoUrls.length} foto(s) subidas`;
+    }
+    await addDoc(collection(db, 'avances'), {
+      desc, photos: photoUrls,
+      projectId: currentProject.id,
+      createdBy: currentUser,
+      createdAt: serverTimestamp()
+    });
+    showToast('✅ Avance registrado', 'success');
+    closeAvanceModal();
+  } catch(e) {
+    console.error('saveAvance error:', e);
+    showToast('❌ Error: ' + (e.message || 'desconocido'));
+    btn.disabled = false;
+    prog.textContent = '';
+  }
+};
+
+window.deleteAvance = async function(avId) {
+  if (!confirm('¿Eliminar este avance?')) return;
+  try { await deleteDoc(doc(db, 'avances', avId)); showToast('🗑️ Avance eliminado'); }
+  catch(e) { showToast('❌ Error'); console.error(e); }
+};
+
+function renderAvances() {
+  const projectAvances = avances.filter(a => a.projectId === currentProject?.id);
+  document.getElementById('badge-avances').textContent = projectAvances.length;
+  const container = document.getElementById('task-list');
+  document.getElementById('section-label').textContent = 'Avances del proyecto';
+
+  projectAvances.forEach(a => { _photoMap['av_'+a.id] = a.photos || []; });
+
+  let html = `<button class="avance-add-btn" onclick="openAvanceModal()">📸 Registrar nuevo avance</button>`;
+
+  if (projectAvances.length === 0) {
+    html += `<div class="empty-state"><div class="empty-icon">📸</div><div class="empty-title">Sin avances registrados</div><div class="empty-sub">Documenta el progreso del proyecto con fotos y descripciones.</div></div>`;
+  } else {
+    html += projectAvances.map(a => {
+      const photos = a.photos || [];
+      const aid = 'av_' + a.id;
+      const comments = a.comments || [];
+
+      const photosHtml = photos.length > 0
+        ? `<div class="photo-strip" style="padding:8px;">
+            ${photos.map((url, pi) => `
+              <div class="photo-thumb-wrap" style="width:120px;height:90px;cursor:pointer;" onclick="window.openLightbox('${aid}',${pi})">
+                <img src="${url}" loading="lazy">
+                <button class="photo-thumb-del" onclick="event.stopPropagation();window.deleteAvancePhoto('${a.id}','${url}')">✕</button>
+              </div>`).join('')}
+            <div class="photo-add-thumb" onclick="window.openAvancePhotoPicker('${a.id}')">
+              <div class="icon">📷</div><span>Agregar</span>
+            </div>
+          </div>`
+        : `<div style="padding:8px 16px 0;">
+            <label style="display:flex;align-items:center;gap:10px;background:var(--surface2);border:1.5px dashed rgba(255,255,255,0.15);border-radius:10px;padding:10px 14px;cursor:pointer;">
+              <span style="font-size:22px;">📷</span>
+              <span style="font-size:13px;color:var(--text-dim);font-weight:600;">Agregar foto</span>
+              <input type="file" accept="image/*" style="display:none;" onchange="handleAvancePhotoInline(event,'${a.id}')">
+            </label>
+          </div>`;
+
+      const commentsHtml = comments.map(c => `
+        <div class="comment-item">
+          <div class="comment-avatar" style="background:${uColor(c.user||'?')};color:#fff;">${uInit(c.user||'?')}</div>
+          <div class="comment-body">
+            <div class="comment-author" style="color:${uColor(c.user||'?')};">${esc(c.user||'Usuario')}</div>
+            <div class="comment-text">${esc(c.text)}</div>
+            <div class="comment-time">🕐 ${c.time?new Date(c.time).toLocaleDateString('es-MX',{day:'numeric',month:'short',year:'2-digit'}):''}</div>
+          </div>
+        </div>`).join('');
+
+      return `<div class="avance-card" id="avc-${a.id}">
+        ${photosHtml}
+        <div class="avance-body">
+          <div class="avance-desc">${esc(a.desc)}</div>
+          <div class="avance-meta" style="margin-top:6px;">
+            <span>👤 ${esc(a.createdBy||'')}</span>
+            <span>📅 ${fDate(a.createdAt)}</span>
+            <button onclick="openAvanceEmail('${a.id}')" style="background:var(--accent-dim);border:1px solid rgba(245,166,35,0.3);color:var(--accent);border-radius:8px;padding:4px 10px;font-size:11px;font-weight:700;cursor:pointer;">✉️ Enviar</button>
+            ${currentUser===ADMIN_USER?`<button onclick="deleteAvance('${a.id}')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:12px;font-weight:600;">🗑️ Eliminar</button>`:''}
+          </div>
+          <div class="comments-section">
+            <div style="display:flex;align-items:center;justify-content:space-between;">
+              <button class="comments-toggle" onclick="window.toggleAvComments('${a.id}')">💬 ${comments.length} comentario${comments.length!==1?'s':''}</button>
+              <button onclick="window.toggleAvComments('${a.id}',true)" style="background:var(--accent-dim);border:1px solid rgba(245,166,35,0.3);color:var(--accent);border-radius:8px;padding:5px 10px;font-size:12px;font-weight:700;cursor:pointer;">✏️ Comentar</button>
+            </div>
+            <div id="av-comm-body-${a.id}" style="display:none;">
+              <div class="comment-list">${commentsHtml}</div>
+              <div class="comment-input-row">
+                <input class="comment-input" id="av-comm-input-${a.id}" type="text" placeholder="Comentar como ${esc(currentUser)}..." maxlength="400"
+                  onkeydown="if(event.key==='Enter')window.addAvanceComment('${a.id}',this)">
+                <button class="comment-send" onclick="window.addAvanceComment('${a.id}',document.getElementById('av-comm-input-${a.id}'))">➤</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+  container.innerHTML = html;
+}
+
+// ── USER ADMIN ──
+window.openUserAdmin = function() {
+  renderUserAdmin();
+  document.getElementById('user-admin-overlay').style.display = 'flex';
+};
+window.closeUserAdmin = function() {
+  document.getElementById('user-admin-overlay').style.display = 'none';
+};
+
+function renderUserAdmin() {
+  const list = document.getElementById('user-admin-list');
+  list.innerHTML = users.map((u, i) => `
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:10px;display:flex;align-items:center;gap:12px;">
+      <div style="width:44px;height:44px;border-radius:50%;background:${uColor(u.name)};color:#fff;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:800;flex-shrink:0;">${uInit(u.name)}</div>
+      <div style="flex:1;">
+        <div style="font-size:15px;font-weight:800;">${esc(u.name)}</div>
+        <div style="font-size:12px;color:var(--text-dim);margin-top:2px;">
+          📱 ${esc(u.phone||'Sin teléfono')}<br>
+          ✉️ ${esc(u.email||'Sin correo')}<br>
+          🔐 ${u.pwd ? '••••••' : 'Sin contraseña'}
+        </div>
+      </div>
+      <div style="display:flex;gap:6px;flex-shrink:0;flex-direction:column;">
+        <div style="display:flex;gap:6px;">
+          ${u.phone ? `<button onclick="sendSMS('${esc(u.phone)}','${esc(u.name)}')" style="background:var(--green-dim);border:1px solid rgba(39,174,96,0.35);color:var(--green);border-radius:10px;padding:8px 10px;font-size:13px;cursor:pointer;" title="Enviar SMS">💬</button>` : ''}
+          ${u.email ? `<button onclick="sendEmailUser('${esc(u.email)}','${esc(u.name)}')" style="background:var(--accent-dim);border:1px solid rgba(245,166,35,0.3);color:var(--accent);border-radius:10px;padding:8px 10px;font-size:13px;cursor:pointer;" title="Enviar email">✉️</button>` : ''}
+        </div>
+        <div style="display:flex;gap:6px;">
+          <button onclick="openEditUser(${i})" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:10px;padding:8px 10px;font-size:13px;cursor:pointer;" title="Editar">✏️</button>
+          ${u.name !== ADMIN_USER ? `<button onclick="deleteUserAdmin(${i})" style="background:rgba(231,76,60,0.12);border:1px solid rgba(231,76,60,0.25);color:var(--red);border-radius:10px;padding:8px 10px;font-size:13px;cursor:pointer;" title="Eliminar">🗑️</button>` : ''}
+        </div>
+      </div>
+    </div>`).join('');
+}
+
+window.addUserAdmin = async function() {
+  const name = document.getElementById('ua-name').value.trim();
+  const pwd  = document.getElementById('ua-pwd').value.trim();
+  const phone = document.getElementById('ua-phone').value.trim();
+  const email = document.getElementById('ua-email').value.trim();
+  if (!name) { showToast('⚠️ Escribe el nombre'); return; }
+  if (!pwd)  { showToast('⚠️ Escribe la contraseña'); return; }
+  if (users.find(u => u.name === name)) { showToast('⚠️ Usuario ya existe'); return; }
+  users.push({ name, pwd, phone, email });
+  await setDoc(doc(db,'config','users'), { list: users });
+  document.getElementById('ua-name').value = '';
+  document.getElementById('ua-pwd').value = '';
+  document.getElementById('ua-phone').value = '';
+  document.getElementById('ua-email').value = '';
+  renderUserAdmin();
+  showToast('👤 Usuario agregado', 'success');
+};
+
+window.deleteUserAdmin = async function(i) {
+  if (users[i].name === ADMIN_USER) { showToast('⚠️ No puedes eliminar a Humberto'); return; }
+  if (!confirm(`¿Eliminar el usuario "${users[i].name}"?`)) return;
+  users.splice(i, 1);
+  await setDoc(doc(db,'config','users'), { list: users });
+  renderUserAdmin();
+  showToast('🗑️ Usuario eliminado');
+};
+
+window.openEditUser = function(i) {
+  const u = users[i];
+  document.getElementById('eu-index').value = i;
+  document.getElementById('eu-name').value = u.name || '';
+  document.getElementById('eu-pwd').value = u.pwd || '';
+  document.getElementById('eu-phone').value = u.phone || '';
+  document.getElementById('eu-email').value = u.email || '';
+  document.getElementById('edit-user-overlay').style.display = 'flex';
+};
+window.closeEditUser = function() {
+  document.getElementById('edit-user-overlay').style.display = 'none';
+};
+window.saveEditUser = async function() {
+  const i = parseInt(document.getElementById('eu-index').value);
+  const name  = document.getElementById('eu-name').value.trim();
+  const pwd   = document.getElementById('eu-pwd').value.trim();
+  const phone = document.getElementById('eu-phone').value.trim();
+  const email = document.getElementById('eu-email').value.trim();
+  if (!name) { showToast('⚠️ Escribe el nombre'); return; }
+  if (!pwd)  { showToast('⚠️ Escribe la contraseña'); return; }
+  users[i] = { ...users[i], name, pwd, phone, email };
+  await setDoc(doc(db,'config','users'), { list: users });
+  closeEditUser();
+  renderUserAdmin();
+  showToast('✅ Usuario actualizado', 'success');
+};
+
+window.sendSMS = function(phone, name) {
+  const msg = encodeURIComponent(`Hola ${name}, te contactamos desde Casa Devine.`);
+  window.open(`sms:${phone}?body=${msg}`);
+};
+
+window.sendEmailUser = function(email, name) {
+  const subject = encodeURIComponent('Mensaje desde Casa Devine');
+  const body = encodeURIComponent(`Hola ${name},
+
+Te contactamos desde Casa Devine.
+
+Saludos,
+Humberto`);
+  window.open(`mailto:${email}?subject=${subject}&body=${body}`);
+};
+
+// ── AVANCE EMAIL ──
+let _avanceEmailTargetId = null;
+
+window.openAvanceEmail = function(avId) {
+  _avanceEmailTargetId = avId;
+  // List users with email
+  const usersWithEmail = users.filter(u => u.email);
+  const recipientsEl = document.getElementById('avance-email-recipients');
+  if (usersWithEmail.length === 0) {
+    recipientsEl.innerHTML = `<div style="font-size:13px;color:var(--text-dim);text-align:center;padding:16px;">No hay usuarios con correo registrado.<br>Agrégalos en el módulo de usuarios.</div>`;
+  } else {
+    recipientsEl.innerHTML = usersWithEmail.map(u => `
+      <label style="display:flex;align-items:center;gap:12px;background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:12px 14px;cursor:pointer;">
+        <input type="checkbox" id="chk-${u.name}" value="${esc(u.email)}" style="width:18px;height:18px;accent-color:var(--accent);cursor:pointer;">
+        <div style="flex:1;">
+          <div style="font-size:14px;font-weight:700;">${esc(u.name)}</div>
+          <div style="font-size:11px;color:var(--text-dim);">✉️ ${esc(u.email)}</div>
+        </div>
+      </label>`).join('');
+    // Auto-check all by default
+    usersWithEmail.forEach(u => {
+      const chk = document.getElementById(`chk-${u.name}`);
+      if (chk) chk.checked = true;
+    });
+  }
+  document.getElementById('avance-email-extra').value = '';
+  document.getElementById('avance-email-status').textContent = '';
+  document.getElementById('avance-email-overlay').style.display = 'flex';
+};
+
+window.closeAvanceEmail = function() {
+  document.getElementById('avance-email-overlay').style.display = 'none';
+  _avanceEmailTargetId = null;
+};
+
+window.sendAvanceEmail = async function() {
+  const avance = avances.find(a => a.id === _avanceEmailTargetId);
+  if (!avance) return;
+
+  const usersWithEmail = users.filter(u => u.email);
+  const selected = usersWithEmail
+    .filter(u => { const chk = document.getElementById(`chk-${u.name}`); return chk && chk.checked; })
+    .map(u => ({ name: u.name, email: u.email }));
+
+  const extra = document.getElementById('avance-email-extra').value.trim();
+  if (extra && extra.includes('@')) selected.push({ name: extra, email: extra });
+
+  if (selected.length === 0) { showToast('⚠️ Selecciona al menos un destinatario'); return; }
+
+  const st = document.getElementById('avance-email-status');
+  st.style.color = 'var(--accent)';
+  st.textContent = `⏳ Enviando a ${selected.length} destinatario(s)...`;
+
+  const now = new Date().toLocaleDateString('es-MX', {day:'numeric', month:'long', year:'numeric'});
+  const photos = avance.photos || [];
+  const photoNote = photos.length > 0
+    ? ('\n\n📷 Fotos del avance:\n' + photos.map((url, i) => '  Foto ' + (i+1) + ': ' + url).join('\n'))
+    : '';
+  const comments = avance.comments || [];
+  const commentsText = comments.length > 0
+    ? ('\n\nComentarios:\n' + comments.map(c => '• ' + c.user + ': ' + c.text).join('\n'))
+    : '';
+
+  const subject = 'Avance — ' + (currentProject?.name || 'Casa Devine') + ' — ' + now;
+  const messageBody = 
+    'Avance registrado en ' + (currentProject?.name || 'Casa Devine') + '\n' +
+    'Fecha: ' + now + '\n' +
+    'Registrado por: ' + (avance.createdBy || '') + '\n\n' +
+    '─'.repeat(40) + '\n\n' +
+    avance.desc + commentsText + photoNote + '\n\n' +
+    '─'.repeat(40) + '\n' +
+    'Enviado desde Casa Devine App';
+
+  let sent = 0, errors = 0;
+  for (const recipient of selected) {
+    try {
+      await emailjs.send('casa-devine', 'template_443j3n8', {
+        to_email: recipient.email,
+        to_name: recipient.name,
+        subject: subject,
+        message: messageBody,
+        from_name: 'Casa Devine — ' + (currentUser || 'Admin'),
+        project_name: currentProject?.name || 'Casa Devine'
+      });
+      sent++;
+    } catch(e) {
+      console.error('EmailJS error for', recipient.email, e);
+      errors++;
+    }
+  }
+
+  if (sent > 0) {
+    st.style.color = 'var(--green)';
+    st.textContent = '✅ Enviado a ' + sent + ' destinatario(s)' + (errors > 0 ? ' (' + errors + ' fallaron)' : '');
+    showToast('✅ Email enviado', 'success');
+    setTimeout(() => closeAvanceEmail(), 2500);
+  } else {
+    st.style.color = 'var(--red)';
+    st.textContent = '❌ Error al enviar. Verifica la configuración de EmailJS.';
+  }
+};
+
+// ── AVANCE PHOTOS & COMMENTS ──
+let _avancePickerTargetId = null;
+
+window.openAvancePhotoPicker = function(avId) {
+  _avancePickerTargetId = avId;
+  document.getElementById('avance-photo-picker').classList.add('open');
+};
+window.closeAvancePhotoPicker = function() {
+  document.getElementById('avance-photo-picker').classList.remove('open');
+  _avancePickerTargetId = null;
+};
+
+window.handleAvancePickerPhoto = async function(e) {
+  const files = Array.from(e.target.files);
+  const avId = _avancePickerTargetId;
+  closeAvancePhotoPicker();
+  if (!files.length || !avId) return;
+  showToast('⏳ Subiendo foto...', 'accent');
+  try {
+    const urls = await Promise.all(files.map(f => uploadCloudinary(f)));
+    const snap = await getDoc(doc(db, 'avances', avId));
+    const existing = snap.data().photos || [];
+    await updateDoc(doc(db, 'avances', avId), { photos: [...existing, ...urls] });
+    showToast('📷 Foto agregada', 'accent');
+  } catch(e) { showToast('❌ Error'); console.error(e); }
+  e.target.value = '';
+};
+
+window.handleAvancePhotoInline = async function(e, avId) {
+  const files = Array.from(e.target.files);
+  if (!files.length) return;
+  showToast('⏳ Subiendo foto...', 'accent');
+  try {
+    const urls = await Promise.all(files.map(f => uploadCloudinary(f)));
+    const snap = await getDoc(doc(db, 'avances', avId));
+    const existing = snap.data().photos || [];
+    await updateDoc(doc(db, 'avances', avId), { photos: [...existing, ...urls] });
+    showToast('📷 Foto agregada', 'accent');
+  } catch(e) { showToast('❌ Error'); console.error(e); }
+  e.target.value = '';
+};
+
+window.deleteAvancePhoto = async function(avId, photoUrl) {
+  if (!confirm('¿Eliminar esta foto?')) return;
+  try {
+    const snap = await getDoc(doc(db, 'avances', avId));
+    const photos = (snap.data().photos || []).filter(u => u !== photoUrl);
+    await updateDoc(doc(db, 'avances', avId), { photos });
+    showToast('🗑️ Foto eliminada');
+  } catch(e) { showToast('❌ Error'); console.error(e); }
+};
+
+window.addAvanceComment = async function(avId, inputEl) {
+  const text = inputEl.value.trim(); if (!text) return;
+  inputEl.value = '';
+  try {
+    const snap = await getDoc(doc(db, 'avances', avId));
+    const comments = [...(snap.data().comments || []), { text, user: currentUser, time: new Date().toISOString() }];
+    await updateDoc(doc(db, 'avances', avId), { comments });
+    setTimeout(() => {
+      const b = document.getElementById(`av-comm-body-${avId}`);
+      if (b) b.style.display = 'block';
+    }, 100);
+  } catch(e) { showToast('❌ Error'); console.error(e); }
+};
+
+window.toggleAvComments = function(avId, forceOpen) {
+  const body = document.getElementById(`av-comm-body-${avId}`);
+  if (!body) return;
+  const isOpen = body.style.display !== 'none';
+  body.style.display = (forceOpen || !isOpen) ? 'block' : 'none';
+  if (!isOpen || forceOpen) setTimeout(() => { const inp = document.getElementById(`av-comm-input-${avId}`); if(inp) inp.focus(); }, 100);
+};
+
+// ── RENDER ──
+function render(){
+  if(!currentUser||!currentProject)return;
+  const projectTasks=tasks.filter(t=>t.projectId===currentProject.id);
+  const pending=projectTasks.filter(t=>!t.done);
+  const done=projectTasks.filter(t=>t.done);
+  document.getElementById('badge-pending').textContent=pending.length;
+  document.getElementById('badge-history').textContent=done.length;
+  document.getElementById('badge-avances').textContent=avances.filter(a=>a.projectId===currentProject?.id).length;
+  document.getElementById('stat-total').textContent=projectTasks.length;
+  document.getElementById('stat-pending-count').textContent=pending.length;
+  document.getElementById('stat-done').textContent=done.length;
+  const pct=projectTasks.length>0?Math.round((done.length/projectTasks.length)*100):0;
+  document.getElementById('progress-pct').textContent=pct+'%';
+  document.getElementById('progress-bar').style.width=pct+'%';
+  const bar=document.getElementById('progress-bar');
+  bar.style.background=pct===100?'linear-gradient(90deg,#27AE60,#2ECC71)':pct>=50?'linear-gradient(90deg,#F5A623,#F39C12)':'linear-gradient(90deg,#E74C3C,#E67E22)';
+  document.getElementById('progress-label').textContent=projectTasks.length>0?`${done.length} de ${projectTasks.length} tareas completadas`:'Sin tareas aún';
+  const list=currentTab==='pending'?pending:done;
+  document.getElementById('section-label').textContent=currentTab==='pending'?'Tareas pendientes':'Historial de completadas';
+  const container=document.getElementById('task-list');
+  if(list.length===0){ container.innerHTML=`<div class="empty-state"><div class="empty-icon">${currentTab==='pending'?'🏗️':'🏆'}</div><div class="empty-title">${currentTab==='pending'?'Sin tareas pendientes':'Sin tareas completadas'}</div><div class="empty-sub">${currentTab==='pending'?'Agrega la primera actividad con el botón +':'Cuando marques tareas como listas, aparecerán aquí.'}</div></div>`; return; }
+  container.innerHTML=list.map(t=>{
+    const photos=t.photos||[];
+    const sid=t.id;
+    _photoMap[sid]=photos;
+    const photosHtml=photos.length>0
+      ?`<div class="card-photo-main" style="cursor:pointer;" onclick="window.openLightbox('${sid}',0)"><img src="${photos[0]}" loading="lazy"><span class="card-status-badge ${t.done?'badge-done':'badge-pending'}">${t.done?'✅ Listo':'⏳ Pendiente'}</span></div>
+        <div class="photo-strip">${photos.map((url,pi)=>`<div class="photo-thumb-wrap" style="cursor:pointer;" onclick="window.openLightbox('${sid}',${pi})"><img src="${url}" loading="lazy"><button class="photo-thumb-del" onclick="event.stopPropagation();window.deleteTaskPhoto('${sid}','${url}')">✕</button></div>`).join('')}<div class="photo-add-thumb" onclick="window.openCardPicker('${sid}')"><div class="icon">📷</div><span>Agregar</span></div></div>`
+      :`<div style="padding:8px 16px 0;">
+          <label style="display:flex;align-items:center;gap:10px;background:var(--surface2);border:1.5px dashed rgba(255,255,255,0.15);border-radius:10px;padding:10px 14px;cursor:pointer;">
+            <span style="font-size:22px;">📷</span>
+            <span style="font-size:13px;color:var(--text-dim);font-weight:600;">Agregar foto</span>
+            <input type="file" accept="image/*" style="display:none;" onchange="handleCardPhotoInline(event,'${sid}')">
+          </label>
+        </div>`;
+    const commentsHtml=(t.comments||[]).map(c=>`<div class="comment-item"><div class="comment-avatar" style="background:${uColor(c.user||'?')};color:#fff;">${uInit(c.user||'?')}</div><div class="comment-body"><div class="comment-author" style="color:${uColor(c.user||'?')};">${esc(c.user||'Usuario')}</div><div class="comment-text">${esc(c.text)}</div><div class="comment-time">🕐 ${c.time?new Date(c.time).toLocaleDateString('es-MX',{day:'numeric',month:'short',year:'2-digit'}):''}</div></div></div>`).join('');
+    const historyTag=t.done?`<div class="history-tag">✅ Completada por ${esc(t.doneBy||'alguien')} el ${t.doneAt?new Date(t.doneAt).toLocaleDateString('es-MX',{day:'numeric',month:'short',year:'2-digit',hour:'2-digit',minute:'2-digit'}):''}</div>`:'';
+
+    // Overdue badge — more than 7 days pending
+    const createdMs = t.createdAt?.toDate ? t.createdAt.toDate().getTime() : new Date(t.createdAt||0).getTime();
+    const daysPending = Math.floor((Date.now() - createdMs) / (1000*60*60*24));
+    const overdueTag = (!t.done && daysPending > 7)
+      ? `<div class="overdue-badge">🚨 ${daysPending} días sin completar</div>`
+      : '';    return `<div class="task-card${t.done?' completed':''}" id="card-${sid}">
+      ${photosHtml}
+      <div class="card-body">
+        ${historyTag}
+        ${overdueTag}
+        <div class="card-header">
+          <div class="priority-dot priority-${t.priority}"></div>
+          <div class="card-title-group">
+            <div class="card-title">${esc(t.title)}</div>
+            <div class="card-meta">${t.area?`<span>📍 ${esc(t.area)}</span>`:''}<span>📅 ${fDate(t.createdAt)}</span>${t.createdBy?`<span>👤 ${esc(t.createdBy)}</span>`:''}<span>${pLabel(t.priority)}</span></div>
+          </div>
+        </div>
+        ${t.desc?`<div style="font-size:13px;color:var(--text-dim);margin-bottom:10px;line-height:1.5;">${esc(t.desc)}</div>`:''}
+        <div class="comments-section">
+          <div style="display:flex;align-items:center;justify-content:space-between;">
+            <button class="comments-toggle" onclick="window.toggleComments('${sid}')">💬 ${(t.comments||[]).length} comentario${(t.comments||[]).length!==1?'s':''}</button>
+            <button onclick="window.toggleComments('${sid}',true)" style="background:var(--accent-dim);border:1px solid rgba(245,166,35,0.3);color:var(--accent);border-radius:8px;padding:5px 10px;font-size:12px;font-weight:700;cursor:pointer;">✏️ Comentar</button>
+          </div>
+          <div id="comm-body-${sid}" style="display:none;">
+            <div class="comment-list">${commentsHtml}</div>
+            <div class="comment-input-row">
+              <input class="comment-input" id="comm-input-${sid}" type="text" placeholder="Comentar como ${esc(currentUser)}..." maxlength="400" onkeydown="if(event.key==='Enter')window.addComment('${sid}',this)">
+              <button class="comment-send" onclick="window.addComment('${sid}',document.getElementById('comm-input-${sid}'))">➤</button>
+            </div>
+          </div>
+        </div>
+        <div class="card-actions">
+          <button class="btn-complete${t.done?' done':''}" onclick="window.toggleDone('${sid}')">${t.done?'↩️ Reactivar':'✅ Marcar como lista'}</button>
+          ${currentUser===ADMIN_USER?`<button class="btn-delete" onclick="window.deleteTask('${sid}')">🗑️</button>`:''}
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── REPORT ──
+window.openReport=function(){
+  document.getElementById('report-content').innerHTML=buildReport();
+  document.getElementById('report-overlay').style.display='flex';
+};
+window.closeReport=function(){ document.getElementById('report-overlay').style.display='none'; };
+
+function buildReport(){
+  if(!currentProject)return'';
+  const projectTasks=tasks.filter(t=>t.projectId===currentProject.id);
+  const pending=projectTasks.filter(t=>!t.done);
+  const done=projectTasks.filter(t=>t.done);
+  const now=new Date().toLocaleDateString('es-MX',{day:'numeric',month:'long',year:'numeric'});
+  const pb={alta:'rp-alta',media:'rp-media',baja:'rp-baja'};
+  const tasksHTML=pending.map((t,i)=>{
+    const photos=t.photos||[];
+    const photosHTML=photos.length>0?`<div class="rep-photos">${photos.map(u=>`<img class="rep-photo" src="${u}" crossorigin="anonymous">`).join('')}</div>`:'';
+    const comments=t.comments||[];
+    const commHTML=comments.length>0?`<div class="rep-comments"><div class="rep-comments-title">💬 Comentarios</div>${comments.map(c=>`<div class="rep-comment"><div class="rep-ca" style="background:${uColor(c.user||'?')};">${uInit(c.user||'?')}</div><div class="rep-cb"><div class="rep-cb-author" style="color:${uColor(c.user||'?')};">${esc(c.user||'?')}</div><div class="rep-cb-text">${esc(c.text)}</div></div></div>`).join('')}</div>`:'';
+    return `<div class="rep-task">
+      <div class="rep-task-header">
+        <div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span style="font-size:11px;color:#bbb;font-weight:700;">#${i+1}</span><span class="rep-priority ${pb[t.priority]||'rp-media'}">${pLabel(t.priority)}</span></div>
+        <div class="rep-task-title">${esc(t.title)}</div>
+        <div class="rep-task-meta">${t.area?`<span>📍 ${esc(t.area)}</span>`:''}<span>📅 ${fDate(t.createdAt)}</span>${t.createdBy?`<span>👤 ${esc(t.createdBy)}</span>`:''}</div>
+      </div>
+      ${photosHTML}
+      ${t.desc?`<div class="rep-desc">📝 ${esc(t.desc)}</div>`:''}
+      ${commHTML}
+    </div>`;
+  }).join('');
+  return `<div style="background:white;color:#1A1A1E;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;max-width:700px;margin:0 auto;padding:20px;">
+    <div style="text-align:center;padding:16px 0 20px;border-bottom:3px solid #F5A623;margin-bottom:20px;">
+      ${currentProject.photo?`<img src="${currentProject.photo}" style="width:80px;height:60px;object-fit:cover;border-radius:10px;margin-bottom:8px;">`:''} 
+      <div style="font-size:22px;font-weight:900;">${esc(currentProject.name)}</div>
+      <div style="font-size:12px;color:#888;margin-top:4px;">Reporte de Pendientes — ${now}</div>
+    </div>
+    <div class="rep-stats">
+      <div class="rep-stat"><div class="rep-stat-num" style="color:#F5A623;">${projectTasks.length}</div><div class="rep-stat-label">Total</div></div>
+      <div class="rep-stat"><div class="rep-stat-num" style="color:#E74C3C;">${pending.length}</div><div class="rep-stat-label">Pendientes</div></div>
+      <div class="rep-stat"><div class="rep-stat-num" style="color:#27AE60;">${done.length}</div><div class="rep-stat-label">Completadas</div></div>
+    </div>
+    ${pending.length===0?'<div style="text-align:center;padding:40px;color:#aaa;">🎉 ¡No hay tareas pendientes!</div>':tasksHTML}
+    <div style="text-align:center;padding:16px 0;border-top:2px solid #f0ede8;margin-top:8px;font-size:11px;color:#bbb;">Generado por Casa Devine App • ${now}</div>
+  </div>`;
+}
+
+window.downloadPDF=async function(){
+  showToast('⏳ Generando PDF...','accent');
+  try{
+    await Promise.all([loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js'),loadScript('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js')]);
+    const {jsPDF}=window.jspdf;
+    const content=document.getElementById('report-content');
+    const orig=content.style.background; content.style.background='#ffffff';
+    const canvas=await html2canvas(content,{scale:2,useCORS:true,allowTaint:true,backgroundColor:'#ffffff',logging:false});
+    content.style.background=orig;
+    const pdf=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
+    const pw=pdf.internal.pageSize.getWidth(),ph=pdf.internal.pageSize.getHeight();
+    const imgH=(canvas.height*pw)/canvas.width;
+    let left=imgH,pos=0;
+    pdf.addImage(canvas.toDataURL('image/jpeg',0.92),'JPEG',0,pos,pw,imgH); left-=ph;
+    while(left>0){pos=left-imgH;pdf.addPage();pdf.addImage(canvas.toDataURL('image/jpeg',0.92),'JPEG',0,pos,pw,imgH);left-=ph;}
+    const d=new Date().toLocaleDateString('es-MX',{day:'2-digit',month:'2-digit',year:'numeric'}).replace(/\//g,'-');
+    pdf.save(`CasaDevine-${currentProject?.name||'Reporte'}-${d}.pdf`);
+    showToast('✅ PDF descargado','success');
+  }catch(e){console.error(e);showToast('❌ Error al generar PDF');}
+};
+
+function loadScript(src){return new Promise((res,rej)=>{if(document.querySelector(`script[src="${src}"]`)){res();return;} const s=document.createElement('script');s.src=src;s.onload=res;s.onerror=rej;document.head.appendChild(s);});}
+
+window.openEmailModal=function(){ document.getElementById('email-overlay').style.display='flex'; document.getElementById('email-status').textContent=''; setTimeout(()=>document.getElementById('email-to').focus(),300); };
+window.closeEmailModal=function(){ document.getElementById('email-overlay').style.display='none'; };
+window.sendEmail=async function(){
+  const email=document.getElementById('email-to').value.trim();
+  if(!email||!email.includes('@')){showToast('⚠️ Escribe un email válido');return;}
+  const pending=tasks.filter(t=>t.projectId===currentProject?.id&&!t.done);
+  const now=new Date().toLocaleDateString('es-MX',{day:'numeric',month:'long',year:'numeric'});
+  const lines=pending.map((t,i)=>`${i+1}. ${t.title}${t.area?' | 📍 '+t.area:''} | ${pLabel(t.priority)}${t.desc?'\n   '+t.desc:''}${(t.comments||[]).length>0?'\n   💬 '+(t.comments||[]).map(c=>c.user+': '+c.text).join(' / '):''}`).join('\n\n');
+  const body=`Reporte de Pendientes — ${currentProject?.name}\nFecha: ${now}\nPendientes: ${pending.length} de ${tasks.filter(t=>t.projectId===currentProject?.id).length}\n\n${'─'.repeat(40)}\n\n${lines||'No hay tareas pendientes'}\n\n${'─'.repeat(40)}\nGenerado por Casa Devine App`;
+  window.open(`mailto:${email}?subject=${encodeURIComponent(`Reporte ${currentProject?.name} — ${now}`)}&body=${encodeURIComponent(body)}`);
+  const st=document.getElementById('email-status'); st.style.color='var(--green)'; st.textContent='✅ Abriendo cliente de correo...';
+  setTimeout(()=>closeEmailModal(),2000);
+};
+
+// ── FIRESTORE LISTENERS ──
+// Users
+onSnapshot(doc(db,'config','users'), snapshot=>{
+  if(snapshot.exists()){
+    const list = snapshot.data().list || [];
+    users = list.map(u => typeof u==='string' ? {name:u, pwd:'temp123'} : u).filter(u=>u.name);
+  } else {
+    users = DEFAULT_USERS;
+    setDoc(doc(db,'config','users'),{list:users});
+  }
+  document.getElementById('loading-screen').classList.add('hidden');
+  if(!currentUser) { showScreen('user-screen'); renderUserScreen(); }
+}, err=>{ 
+  console.error('Users error:',err); 
+  users=DEFAULT_USERS; 
+  document.getElementById('loading-screen').classList.add('hidden');
+  showScreen('user-screen');
+  renderUserScreen(); 
+});
+
+// Projects
+onSnapshot(collection(db,'projects'), snapshot=>{
+  projects=snapshot.docs.map(d=>({id:d.id,...d.data()}));
+  projects.sort((a,b)=>{
+    const ta=a.createdAt?.toDate?.()|| new Date(0);
+    const tb=b.createdAt?.toDate?.()|| new Date(0);
+    return ta-tb;
+  });
+  if(currentUser&&!currentProject) renderProjectScreen();
+  else if(currentUser&&currentProject){
+    currentProject=projects.find(p=>p.id===currentProject.id)||currentProject;
+    renderProjectScreen();
+  }
+});
+
+// Tasks
+onSnapshot(collection(db,'tasks'), snapshot=>{
+  tasks=snapshot.docs.map(d=>({id:d.id,...d.data()}));
+  tasks.sort((a,b)=>{
+    const ta=a.createdAt?.toDate?.()|| new Date(0);
+    const tb=b.createdAt?.toDate?.()|| new Date(0);
+    return tb-ta;
+  });
+  if(currentUser&&currentProject) { render(); renderProjectScreen(); }
+  else if(currentUser&&projects.length>0) {
+    currentProject=projects[0];
+    showScreen('app'); updateAppHeader(); render();
+  }
+  else if(currentUser) { showScreen('project-screen'); renderProjectScreen(); }
+  else if(!currentUser) { /* users listener handles showing user screen */ }
+  const waitLogin=setInterval(()=>{ if(currentUser&&currentProject){clearInterval(waitLogin);render();} },300);
+  setTimeout(()=>clearInterval(waitLogin),30000);
+},{error:e=>{ document.getElementById('loading-screen').classList.add('hidden'); showScreen('user-screen'); renderUserScreen(); console.error(e); }});
+
+// Avances listener
+onSnapshot(collection(db,'avances'), snapshot=>{
+  avances = snapshot.docs.map(d=>({id:d.id,...d.data()}));
+  avances.sort((a,b)=>{
+    const ta=a.createdAt?.toDate?.()|| new Date(0);
+    const tb=b.createdAt?.toDate?.()|| new Date(0);
+    return tb-ta;
+  });
+  if(currentUser&&currentProject) {
+    document.getElementById('badge-avances').textContent = avances.filter(a=>a.projectId===currentProject.id).length;
+    if(currentTab==='avances') renderAvances();
+  }
+});
+
+// overlay closes
+document.getElementById('modal').addEventListener('click',e=>{if(e.target===document.getElementById('modal'))window.closeModal();});
+['form-picker','card-picker','proj-picker'].forEach(id=>{ document.getElementById(id).addEventListener('click',e=>{if(e.target===document.getElementById(id))document.getElementById(id).classList.remove('open');}); });
+document.getElementById('avance-modal').addEventListener('click',e=>{if(e.target===document.getElementById('avance-modal'))window.closeAvanceModal();});
+document.getElementById('avance-photo-picker').addEventListener('click',e=>{if(e.target===document.getElementById('avance-photo-picker'))closeAvancePhotoPicker();});
+document.getElementById('avance-email-overlay').addEventListener('click',e=>{if(e.target===document.getElementById('avance-email-overlay'))window.closeAvanceEmail();});
+document.getElementById('report-overlay').addEventListener('click',e=>{if(e.target===document.getElementById('report-overlay'))window.closeReport();});
+document.getElementById('email-overlay').addEventListener('click',e=>{if(e.target===document.getElementById('email-overlay'))window.closeEmailModal();});
+</script>
+</body>
+</html>
