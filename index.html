@@ -2195,9 +2195,24 @@ function renderAsistencia() {
   if (empleados.length===0) {
     html += `<div class="empty-state"><div class="empty-icon">👷</div><div class="empty-title">Sin empleados configurados</div><div class="empty-sub">Humberto debe configurar qué usuarios son empleados en este proyecto.</div></div>`;
   } else {
+    const currentMonday = getCurrentWeekMonday();
+
     empleados.forEach(emp => {
-      const empRegs = projRegs.filter(r=>r.empleado===emp.name);
-      empRegs.sort((a,b)=>b.fecha.localeCompare(a.fecha));
+      const empRegs = projRegs.filter(r => r.empleado===emp.name);
+      empRegs.sort((a,b) => b.fecha.localeCompare(a.fecha));
+
+      // Group by week
+      const weeks = {};
+      empRegs.forEach(r => {
+        const monday = getMondayOf(r.fecha);
+        if (!weeks[monday]) weeks[monday] = [];
+        weeks[monday].push(r);
+      });
+      const weekKeys = Object.keys(weeks).sort().reverse();
+
+      const totalRegs = empRegs.length;
+      const totalCompletos = empRegs.filter(r=>r.salida).length;
+
       html += `<div class="asist-card">
         <div class="asist-card-header">
           <div>
@@ -2205,27 +2220,62 @@ function renderAsistencia() {
               <div style="width:32px;height:32px;border-radius:50%;background:${uColor(emp.name)};color:#fff;font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center;">${uInit(emp.name)}</div>
               <div class="asist-empleado-name">${esc(emp.name)}</div>
             </div>
-            <div class="asist-empleado-meta" style="font-size:13px;">${empRegs.length} registros · ${empRegs.filter(r=>r.salida).length} completos</div>
+            <div class="asist-empleado-meta">${totalRegs} registros · ${totalCompletos} completos</div>
           </div>
-        </div>
-        ${empRegs.length===0
-          ? `<div style="padding:14px 16px;font-size:13px;color:var(--text-dim);">Sin registros aún</div>`
-          : empRegs.map(r => {
+        </div>`;
+
+      if (empRegs.length===0) {
+        html += `<div style="padding:14px 16px;font-size:13px;color:var(--text-dim);">Sin registros aún</div>`;
+      } else {
+        weekKeys.forEach(monday => {
+          const isCurrentWeek = monday === currentMonday;
+          const weekRegs = weeks[monday];
+          const sunday = new Date(monday+'T12:00:00');
+          sunday.setDate(sunday.getDate()+6);
+          const mondayDate = new Date(monday+'T12:00:00');
+          const weekLabel = mondayDate.toLocaleDateString('es-MX',{day:'numeric',month:'short'}) +
+            ' – ' + sunday.toLocaleDateString('es-MX',{day:'numeric',month:'short'});
+          const weekHrs = weekRegs.reduce((s,r)=>s+calcHoras(r.entrada,r.salida||r.entrada),0);
+          const weekId = `week-${emp.name.replace(/\s/g,'-')}-${monday}`;
+
+          // Week header — always visible
+          html += `<div style="display:flex;align-items:center;gap:8px;padding:10px 16px;background:${isCurrentWeek?'rgba(245,166,35,0.08)':'var(--surface2)'};border-bottom:1px solid var(--border);cursor:pointer;" onclick="toggleWeekSection('${weekId}')">
+            ${isCurrentWeek ? '<span style="background:var(--accent);color:#000;border-radius:6px;padding:2px 8px;font-size:11px;font-weight:800;flex-shrink:0;">ESTA SEMANA</span>' : '<span style="font-size:16px;">📅</span>'}
+            <span style="font-size:14px;font-weight:700;flex:1;color:${isCurrentWeek?'var(--accent)':'var(--text)'};">${weekLabel}</span>
+            <span style="font-size:12px;color:var(--text-dim);margin-right:6px;">${weekRegs.length} días · ${weekHrs.toFixed(1)}h</span>
+            <span id="${weekId}-icon" style="font-size:16px;color:var(--text-dim);transition:transform 0.2s;">${isCurrentWeek?'▾':'▸'}</span>
+          </div>
+          <div id="${weekId}" style="display:${isCurrentWeek?'block':'none'};">
+            ${weekRegs.map(r => {
               const hrs = r.salida ? calcHoras(r.entrada,r.salida) : null;
-              const fechaStr = new Date(r.fecha+'T12:00:00').toLocaleDateString('es-MX',{weekday:'short',day:'numeric',month:'short',year:'2-digit'});
+              const fechaStr = new Date(r.fecha+'T12:00:00').toLocaleDateString('es-MX',{weekday:'long',day:'numeric',month:'short'});
               return `<div class="asist-registro" style="cursor:pointer;" onclick="window.openAsistEditModal('${r.id}')">
-                <div class="asist-fecha">${fechaStr}</div>
-                <div class="asist-horas">${r.entrada}${r.salida?' → '+r.salida:' (sin salida)'}${r.notas?'<br><span style="font-style:italic;">'+esc(r.notas)+'</span>':''}${r.editadoPor?'<br><span style="color:var(--accent);font-size:12px;">✏️ Editado por '+esc(r.editadoPor)+'</span>':''}</div>
+                <div style="flex:1;">
+                  <div class="asist-fecha" style="text-transform:capitalize;">${fechaStr}</div>
+                  <div class="asist-horas">${r.entrada}${r.salida?' → '+r.salida:' <span style="color:var(--red);font-size:12px;">(sin salida)</span>'}${r.notas?'<br><span style="font-style:italic;font-size:12px;">'+esc(r.notas)+'</span>':''}${r.editadoPor?'<br><span style="color:var(--accent);font-size:12px;">✏️ Editado por '+esc(r.editadoPor)+'</span>':''}</div>
+                </div>
                 ${hrs!==null?`<div class="asist-total">${hrs.toFixed(1)}h</div>`:''}
                 <div style="font-size:18px;color:var(--text-dim);margin-left:4px;">›</div>
               </div>`;
-            }).join('')
-        }
-      </div>`;
+            }).join('')}
+          </div>`;
+        });
+      }
+
+      html += `</div>`;
     });
   }
   container.innerHTML = html;
 }
+
+window.toggleWeekSection = function(weekId) {
+  const section = document.getElementById(weekId);
+  const icon = document.getElementById(weekId+'-icon');
+  if (!section) return;
+  const isOpen = section.style.display !== 'none';
+  section.style.display = isOpen ? 'none' : 'block';
+  if (icon) icon.textContent = isOpen ? '▸' : '▾';
+};
 
 // ── MATERIALES ──
 let _mlItemCounter = 0;
