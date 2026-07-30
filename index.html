@@ -67,6 +67,17 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
 .compra-add-btn:active{background:#3498DB;color:#fff;}
 .compra-total-bar{background:var(--surface);border-radius:12px;padding:14px 16px;margin-bottom:14px;border:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;}
 
+/* GALERÍA */
+.galeria-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:16px;}
+.galeria-item{background:var(--surface);border-radius:12px;overflow:hidden;border:1px solid var(--border);cursor:pointer;transition:transform 0.15s;}
+.galeria-item:active{transform:scale(0.97);}
+.galeria-img{width:100%;aspect-ratio:4/3;object-fit:cover;display:block;}
+.galeria-info{padding:8px 10px;}
+.galeria-desc{font-size:13px;font-weight:600;line-height:1.4;margin-bottom:4px;}
+.galeria-meta{font-size:10px;color:var(--text-dim);}
+.galeria-add-btn{display:flex;align-items:center;justify-content:center;gap:8px;background:rgba(26,188,156,0.15);border:1px solid rgba(26,188,156,0.35);color:#1ABC9C;border-radius:12px;padding:14px;font-size:14px;font-weight:700;cursor:pointer;width:100%;margin-bottom:14px;}
+.galeria-add-btn:active{background:#1ABC9C;color:#fff;}
+
 /* ASISTENCIA */
 .asist-card{background:var(--surface);border-radius:var(--radius);margin-bottom:12px;overflow:hidden;border:1px solid var(--border);}
 .asist-card-header{padding:14px 16px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);}
@@ -506,6 +517,7 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
         <button class="tab" id="tab-compras" onclick="switchTab('compras')">🛒 Compras <span class="tab-badge" id="badge-compras" style="background:#3498DB;">0</span></button>
         <button class="tab" id="tab-materiales" onclick="switchTab('materiales')">📦 Materiales <span class="tab-badge" id="badge-materiales" style="background:#27AE60;">0</span></button>
         <button class="tab" id="tab-asistencia" onclick="switchTab('asistencia')">⏱️ Asistencia <span class="tab-badge" id="badge-asistencia" style="background:#9B59B6;">0</span></button>
+        <button class="tab" id="tab-galeria" onclick="switchTab('galeria')">🗂️ Generales <span class="tab-badge" id="badge-galeria" style="background:#1ABC9C;">0</span></button>
       </div>
     </div>
   </header>
@@ -837,6 +849,31 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
   </div>
 </div>
 
+<!-- GALERÍA: SUBIR FOTOS MODAL -->
+<div class="modal-overlay" id="galeria-modal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">🗂️ Subir Fotos — Generales</div>
+    <div class="form-group">
+      <label class="form-label">Selecciona las fotos</label>
+      <div style="display:flex;gap:8px;margin-bottom:10px;">
+        <label style="flex:1;background:var(--surface2);border:1px dashed rgba(255,255,255,0.18);border-radius:12px;color:var(--text-dim);padding:14px;font-size:13px;font-weight:600;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:6px;">
+          <span style="font-size:22px;">📷</span><span>Cámara</span>
+          <input type="file" accept="image/*" capture="environment" onchange="handleGaleriaPhotos(event)" style="display:none;">
+        </label>
+        <label style="flex:1;background:var(--surface2);border:1px dashed rgba(255,255,255,0.18);border-radius:12px;color:var(--text-dim);padding:14px;font-size:13px;font-weight:600;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:6px;">
+          <span style="font-size:22px;">🖼️</span><span>Galería (múltiples)</span>
+          <input type="file" accept="image/*" multiple onchange="handleGaleriaPhotos(event)" style="display:none;">
+        </label>
+      </div>
+      <div id="galeria-previews"></div>
+      <div class="upload-progress" id="galeria-upload-status"></div>
+    </div>
+    <button class="btn-submit" id="btn-save-galeria" onclick="saveGaleriaFotos()">Subir fotos</button>
+    <button class="btn-cancel" onclick="closeGaleriaModal()">Cancelar</button>
+  </div>
+</div>
+
 <!-- ACCESS CONTROL MODAL -->
 <div id="access-overlay" style="position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:900;display:none;flex-direction:column;">
   <div style="background:var(--surface);padding:14px 20px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);flex-shrink:0;">
@@ -1021,7 +1058,10 @@ let matListas = [];
 let mlItems = [];
 let meItems = [];
 let asistRegistros = [];
-let asistConfig = {}; // { projectId: [empleado1, empleado2] }
+let asistConfig = {};
+let galeriaFotos = [];
+let galeriaPhotoFiles = [];
+let galeriaPhotoPreviews = []; // { projectId: [empleado1, empleado2] }
 let appLogoSrc = localStorage.getItem('app-logo') || 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj4KICA8ZGVmcz4KICAgIDxsaW5lYXJHcmFkaWVudCBpZD0iYmciIHgxPSIwJSIgeTE9IjAlIiB4Mj0iMTAwJSIgeTI9IjEwMCUiPgogICAgICA8c3RvcCBvZmZzZXQ9IjAlIiBzdHlsZT0ic3RvcC1jb2xvcjojRjVBNjIzO3N0b3Atb3BhY2l0eToxIiAvPgogICAgICA8c3RvcCBvZmZzZXQ9IjEwMCUiIHN0eWxlPSJzdG9wLWNvbG9yOiNFODg5MEE7c3RvcC1vcGFjaXR5OjEiIC8+CiAgICA8L2xpbmVhckdyYWRpZW50PgogICAgPGxpbmVhckdyYWRpZW50IGlkPSJzaGluZSIgeDE9IjAlIiB5MT0iMCUiIHgyPSIwJSIgeTI9IjEwMCUiPgogICAgICA8c3RvcCBvZmZzZXQ9IjAlIiBzdHlsZT0ic3RvcC1jb2xvcjojZmZmZmZmO3N0b3Atb3BhY2l0eTowLjI1IiAvPgogICAgICA8c3RvcCBvZmZzZXQ9IjEwMCUiIHN0eWxlPSJzdG9wLWNvbG9yOiNmZmZmZmY7c3RvcC1vcGFjaXR5OjAiIC8+CiAgICA8L2xpbmVhckdyYWRpZW50PgogIDwvZGVmcz4KICA8IS0tIEJhY2tncm91bmQgLS0+CiAgPHJlY3Qgd2lkdGg9IjEwMCIgaGVpZ2h0PSIxMDAiIHJ4PSIyMiIgZmlsbD0idXJsKCNiZykiLz4KICA8IS0tIFNoaW5lIG92ZXJsYXkgLS0+CiAgPHJlY3Qgd2lkdGg9IjEwMCIgaGVpZ2h0PSI1MCIgcng9IjIyIiBmaWxsPSJ1cmwoI3NoaW5lKSIvPgogIDwhLS0gQ2xpcGJvYXJkIGJhc2UgLS0+CiAgPHJlY3QgeD0iMjIiIHk9IjI4IiB3aWR0aD0iNTYiIGhlaWdodD0iNTIiIHJ4PSI2IiBmaWxsPSJyZ2JhKDAsMCwwLDAuMTgpIi8+CiAgPHJlY3QgeD0iMjIiIHk9IjI2IiB3aWR0aD0iNTYiIGhlaWdodD0iNTIiIHJ4PSI2IiBmaWxsPSJ3aGl0ZSIgb3BhY2l0eT0iMC45NSIvPgogIDwhLS0gQ2xpcGJvYXJkIHRvcCBjbGlwIC0tPgogIDxyZWN0IHg9IjM4IiB5PSIyMCIgd2lkdGg9IjI0IiBoZWlnaHQ9IjE0IiByeD0iNCIgZmlsbD0icmdiYSgwLDAsMCwwLjE4KSIvPgogIDxyZWN0IHg9IjM4IiB5PSIxOSIgd2lkdGg9IjI0IiBoZWlnaHQ9IjEzIiByeD0iNCIgZmlsbD0iI0U4ODkwQSIvPgogIDxjaXJjbGUgY3g9IjUwIiBjeT0iMjUiIHI9IjMiIGZpbGw9IndoaXRlIiBvcGFjaXR5PSIwLjYiLz4KICA8IS0tIENoZWNrbGlzdCBsaW5lcyAtLT4KICA8IS0tIExpbmUgMSAtIGNoZWNrZWQgLS0+CiAgPGNpcmNsZSBjeD0iMzIiIGN5PSI0MSIgcj0iNCIgZmlsbD0iI0Y1QTYyMyIvPgogIDxwYXRoIGQ9Ik0zMCA0MSBMMzEuNSA0Mi44IEwzNC41IDM5LjUiIHN0cm9rZT0id2hpdGUiIHN0cm9rZS13aWR0aD0iMS41IiBmaWxsPSJub25lIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiLz4KICA8cmVjdCB4PSI0MCIgeT0iMzkiIHdpZHRoPSIyOCIgaGVpZ2h0PSIzIiByeD0iMS41IiBmaWxsPSIjRTg4OTBBIiBvcGFjaXR5PSIwLjciLz4KICA8IS0tIExpbmUgMiAtIGNoZWNrZWQgLS0+CiAgPGNpcmNsZSBjeD0iMzIiIGN5PSI1MyIgcj0iNCIgZmlsbD0iI0Y1QTYyMyIvPgogIDxwYXRoIGQ9Ik0zMCA1MyBMMzEuNSA1NC44IEwzNC41IDUxLjUiIHN0cm9rZT0id2hpdGUiIHN0cm9rZS13aWR0aD0iMS41IiBmaWxsPSJub25lIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiLz4KICA8cmVjdCB4PSI0MCIgeT0iNTEiIHdpZHRoPSIyMiIgaGVpZ2h0PSIzIiByeD0iMS41IiBmaWxsPSIjRTg4OTBBIiBvcGFjaXR5PSIwLjciLz4KICA8IS0tIExpbmUgMyAtIHVuY2hlY2tlZCAtLT4KICA8Y2lyY2xlIGN4PSIzMiIgY3k9IjY1IiByPSI0IiBmaWxsPSJub25lIiBzdHJva2U9IiNGNUE2MjMiIHN0cm9rZS13aWR0aD0iMS41Ii8+CiAgPHJlY3QgeD0iNDAiIHk9IjYzIiB3aWR0aD0iMTgiIGhlaWdodD0iMyIgcng9IjEuNSIgZmlsbD0iI2NjYyIgb3BhY2l0eT0iMC44Ii8+Cjwvc3ZnPg==';
 
 const ADMIN_USER = 'Humberto';
@@ -1372,10 +1412,12 @@ window.switchTab=function(tab){
   document.getElementById('tab-compras').classList.toggle('active',tab==='compras');
   document.getElementById('tab-materiales').classList.toggle('active',tab==='materiales');
   document.getElementById('tab-asistencia').classList.toggle('active',tab==='asistencia');
+  document.getElementById('tab-galeria').classList.toggle('active',tab==='galeria');
   if(tab==='avances') renderAvances();
   else if(tab==='compras') renderCompras();
   else if(tab==='materiales') renderMateriales();
   else if(tab==='asistencia') renderAsistencia();
+  else if(tab==='galeria') renderGaleria();
   else render();
 };
 
@@ -1921,6 +1963,123 @@ function renderCompras() {
     }).join('');
   } else {
     html += `<div class="empty-state"><div class="empty-icon">🧾</div><div class="empty-title">Sin compras registradas</div><div class="empty-sub">Registra las compras de materiales con foto del recibo.</div></div>`;
+  }
+  container.innerHTML = html;
+}
+
+// ── GALERÍA ──
+window.openGaleriaModal = function() {
+  galeriaPhotoFiles = [];
+  galeriaPhotoPreviews = [];
+  document.getElementById('galeria-previews').innerHTML = '';
+  document.getElementById('galeria-upload-status').textContent = '';
+  document.getElementById('btn-save-galeria').disabled = false;
+  document.getElementById('galeria-modal').classList.add('open');
+};
+
+window.closeGaleriaModal = function() {
+  document.getElementById('galeria-modal').classList.remove('open');
+};
+
+window.handleGaleriaPhotos = function(e) {
+  Array.from(e.target.files).forEach(file => {
+    galeriaPhotoFiles.push({ file, desc: '' });
+    const r = new FileReader();
+    r.onload = ev => {
+      const idx = galeriaPhotoFiles.length - 1;
+      galeriaPhotoPreviews.push(ev.target.result);
+      renderGaleriaPreviews();
+    };
+    r.readAsDataURL(file);
+  });
+  e.target.value = '';
+};
+
+function renderGaleriaPreviews() {
+  const container = document.getElementById('galeria-previews');
+  container.innerHTML = galeriaPhotoFiles.map((item, i) => `
+    <div style="display:flex;gap:10px;align-items:flex-start;background:var(--surface2);border-radius:12px;padding:10px;margin-bottom:8px;">
+      <img src="${galeriaPhotoPreviews[i]||''}" style="width:70px;height:70px;object-fit:cover;border-radius:8px;flex-shrink:0;">
+      <div style="flex:1;">
+        <input type="text" placeholder="Descripción de esta foto..." id="gdesc-${i}"
+          value="${esc(item.desc)}"
+          oninput="galeriaPhotoFiles[${i}].desc=this.value"
+          style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:14px;padding:8px 10px;outline:none;font-family:inherit;margin-bottom:6px;">
+        <button onclick="removeGaleriaPhoto(${i})" style="background:rgba(231,76,60,0.15);border:1px solid rgba(231,76,60,0.25);color:var(--red);border-radius:8px;padding:4px 10px;font-size:12px;cursor:pointer;">✕ Quitar</button>
+      </div>
+    </div>`).join('');
+}
+window.renderGaleriaPreviews = renderGaleriaPreviews;
+
+window.removeGaleriaPhoto = function(i) {
+  galeriaPhotoFiles.splice(i, 1);
+  galeriaPhotoPreviews.splice(i, 1);
+  renderGaleriaPreviews();
+};
+
+window.saveGaleriaFotos = async function() {
+  if (galeriaPhotoFiles.length === 0) { showToast('⚠️ Selecciona al menos una foto'); return; }
+  if (!currentProject) return;
+  const btn = document.getElementById('btn-save-galeria');
+  const status = document.getElementById('galeria-upload-status');
+  btn.disabled = true;
+
+  try {
+    const now = new Date().toISOString();
+    let uploaded = 0;
+    for (let i = 0; i < galeriaPhotoFiles.length; i++) {
+      const { file, desc } = galeriaPhotoFiles[i];
+      status.textContent = `⏳ Subiendo foto ${i+1} de ${galeriaPhotoFiles.length}...`;
+      const url = await uploadCloudinary(file);
+      await addDoc(collection(db, 'galeria'), {
+        url, desc: desc || '',
+        projectId: currentProject.id,
+        subidoPor: currentUser,
+        subidoAt: now,
+        createdAt: serverTimestamp()
+      });
+      uploaded++;
+    }
+    showToast(`✅ ${uploaded} foto(s) subidas`, 'success');
+    closeGaleriaModal();
+    switchTab('galeria');
+  } catch(e) {
+    showToast('❌ Error al subir fotos'); console.error(e);
+    btn.disabled = false;
+  }
+};
+
+window.deleteGaleriaFoto = async function(id) {
+  if (!confirm('¿Eliminar esta foto?')) return;
+  try { await deleteDoc(doc(db, 'galeria', id)); showToast('🗑️ Foto eliminada'); }
+  catch(e) { showToast('❌ Error'); console.error(e); }
+};
+
+function renderGaleria() {
+  const container = document.getElementById('task-list');
+  document.getElementById('section-label').textContent = 'Generalidades del proyecto';
+  const proyFotos = galeriaFotos.filter(f => f.projectId === currentProject?.id);
+  document.getElementById('badge-galeria').textContent = proyFotos.length;
+
+  let html = `<button class="galeria-add-btn" onclick="openGaleriaModal()">🗂️ Subir fotos generales del proyecto</button>`;
+
+  if (proyFotos.length === 0) {
+    html += `<div class="empty-state"><div class="empty-icon">📷</div><div class="empty-title">Sin fotos generales</div><div class="empty-sub">Sube fotos generales del proyecto con descripción para documentar aspectos importantes.</div></div>`;
+  } else {
+    html += `<div class="galeria-grid">`;
+    proyFotos.forEach((f, idx) => {
+      _photoMap['gal_'+f.id] = [f.url];
+      const fecha = f.subidoAt ? new Date(f.subidoAt).toLocaleDateString('es-MX',{day:'numeric',month:'short',year:'2-digit',hour:'2-digit',minute:'2-digit'}) : '';
+      html += `<div class="galeria-item" onclick="window.openLightbox('gal_${f.id}',0)">
+        <img class="galeria-img" src="${f.url}" loading="lazy">
+        <div class="galeria-info">
+          ${f.desc ? `<div class="galeria-desc">${esc(f.desc)}</div>` : ''}
+          <div class="galeria-meta">👤 ${esc(f.subidoPor||'')} · 📅 ${fecha}</div>
+          ${currentUser===ADMIN_USER ? `<button onclick="event.stopPropagation();window.deleteGaleriaFoto('${f.id}')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:11px;font-weight:600;margin-top:4px;">🗑️ Eliminar</button>` : ''}
+        </div>
+      </div>`;
+    });
+    html += `</div>`;
   }
   container.innerHTML = html;
 }
@@ -2697,6 +2856,7 @@ function render(){
   document.getElementById('badge-materiales').textContent=matListas.filter(m=>m.projectId===currentProject?.id).length;
   const projEmps = (asistConfig[currentProject?.id]||[]);
   document.getElementById('badge-asistencia').textContent=asistRegistros.filter(r=>r.projectId===currentProject?.id).length;
+  document.getElementById('badge-galeria').textContent=galeriaFotos.filter(f=>f.projectId===currentProject?.id).length;
   document.getElementById('stat-total').textContent=projectTasks.length;
   document.getElementById('stat-pending-count').textContent=pending.length;
   document.getElementById('stat-done').textContent=done.length;
@@ -2908,6 +3068,20 @@ onSnapshot(collection(db,'tasks'), snapshot=>{
   setTimeout(()=>clearInterval(waitLogin),30000);
 },{error:e=>{ document.getElementById('loading-screen').classList.add('hidden'); showScreen('user-screen'); renderUserScreen(); console.error(e); }});
 
+// Galería listener
+onSnapshot(collection(db,'galeria'), snapshot=>{
+  galeriaFotos = snapshot.docs.map(d=>({id:d.id,...d.data()}));
+  galeriaFotos.sort((a,b)=>{
+    const ta=a.createdAt?.toDate?.()|| new Date(0);
+    const tb=b.createdAt?.toDate?.()|| new Date(0);
+    return tb-ta;
+  });
+  if(currentUser&&currentProject){
+    document.getElementById('badge-galeria').textContent=galeriaFotos.filter(f=>f.projectId===currentProject.id).length;
+    if(currentTab==='galeria') renderGaleria();
+  }
+});
+
 // Asistencia listener
 onSnapshot(collection(db,'asistencia'), snapshot=>{
   asistRegistros = snapshot.docs.map(d=>({id:d.id,...d.data()}));
@@ -2971,6 +3145,7 @@ document.getElementById('compra-modal').addEventListener('click',e=>{if(e.target
 document.getElementById('mat-lista-modal').addEventListener('click',e=>{if(e.target===document.getElementById('mat-lista-modal'))window.closeMatListaModal();});
 document.getElementById('mat-edit-modal').addEventListener('click',e=>{if(e.target===document.getElementById('mat-edit-modal'))window.closeMatEditModal();});
 document.getElementById('asist-reg-modal').addEventListener('click',e=>{if(e.target===document.getElementById('asist-reg-modal'))window.closeAsistRegModal();});
+document.getElementById('galeria-modal').addEventListener('click',e=>{if(e.target===document.getElementById('galeria-modal'))window.closeGaleriaModal();});
 document.getElementById('asist-edit-modal').addEventListener('click',e=>{if(e.target===document.getElementById('asist-edit-modal'))window.closeAsistEditModal();});
 document.getElementById('asist-calc-overlay').addEventListener('click',e=>{if(e.target===document.getElementById('asist-calc-overlay'))window.closeAsistCalc();});
 document.getElementById('asist-config-overlay').addEventListener('click',e=>{if(e.target===document.getElementById('asist-config-overlay'))window.closeAsistConfig();});
