@@ -874,6 +874,36 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
   </div>
 </div>
 
+<!-- GALERÍA: EDITAR FOTO MODAL -->
+<div class="modal-overlay" id="galeria-edit-modal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">✏️ Editar Foto</div>
+    <input type="hidden" id="ge-id">
+    <div class="form-group">
+      <label class="form-label">Descripción</label>
+      <textarea class="form-textarea" id="ge-desc" placeholder="Descripción de la foto..." style="min-height:80px;"></textarea>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Reemplazar foto (opcional)</label>
+      <div style="display:flex;gap:8px;">
+        <label style="flex:1;background:var(--surface2);border:1px dashed rgba(255,255,255,0.18);border-radius:12px;color:var(--text-dim);padding:12px;font-size:13px;font-weight:600;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;">
+          <span style="font-size:20px;">📷</span><span>Cámara</span>
+          <input type="file" accept="image/*" capture="environment" onchange="handleGaleriaEditPhoto(event)" style="display:none;">
+        </label>
+        <label style="flex:1;background:var(--surface2);border:1px dashed rgba(255,255,255,0.18);border-radius:12px;color:var(--text-dim);padding:12px;font-size:13px;font-weight:600;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;">
+          <span style="font-size:20px;">🖼️</span><span>Galería</span>
+          <input type="file" accept="image/*" onchange="handleGaleriaEditPhoto(event)" style="display:none;">
+        </label>
+      </div>
+      <div id="ge-photo-preview" style="margin-top:8px;"></div>
+    </div>
+    <div class="upload-progress" id="ge-status"></div>
+    <button class="btn-submit" id="btn-update-galeria" onclick="saveGaleriaEdit()">Guardar cambios</button>
+    <button class="btn-cancel" onclick="closeGaleriaEditModal()">Cancelar</button>
+  </div>
+</div>
+
 <!-- ACCESS CONTROL MODAL -->
 <div id="access-overlay" style="position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:900;display:none;flex-direction:column;">
   <div style="background:var(--surface);padding:14px 20px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);flex-shrink:0;">
@@ -2028,7 +2058,9 @@ window.saveGaleriaFotos = async function() {
     const now = new Date().toISOString();
     let uploaded = 0;
     for (let i = 0; i < galeriaPhotoFiles.length; i++) {
-      const { file, desc } = galeriaPhotoFiles[i];
+      const { file } = galeriaPhotoFiles[i];
+      const descInput = document.getElementById(`gdesc-${i}`);
+      const desc = descInput ? descInput.value.trim() : '';
       status.textContent = `⏳ Subiendo foto ${i+1} de ${galeriaPhotoFiles.length}...`;
       const url = await uploadCloudinary(file);
       await addDoc(collection(db, 'galeria'), {
@@ -2047,6 +2079,59 @@ window.saveGaleriaFotos = async function() {
     showToast('❌ Error al subir fotos'); console.error(e);
     btn.disabled = false;
   }
+};
+
+let _galeriaEditNewFile = null;
+
+window.openGaleriaEditModal = function(id) {
+  const f = galeriaFotos.find(f => f.id === id);
+  if (!f) return;
+  document.getElementById('ge-id').value = id;
+  document.getElementById('ge-desc').value = f.desc || '';
+  document.getElementById('ge-photo-preview').innerHTML =
+    `<img src="${f.url}" style="width:100%;border-radius:10px;max-height:180px;object-fit:cover;">`;
+  document.getElementById('ge-status').textContent = '';
+  document.getElementById('btn-update-galeria').disabled = false;
+  _galeriaEditNewFile = null;
+  document.getElementById('galeria-edit-modal').classList.add('open');
+};
+
+window.closeGaleriaEditModal = function() {
+  document.getElementById('galeria-edit-modal').classList.remove('open');
+  _galeriaEditNewFile = null;
+};
+
+window.handleGaleriaEditPhoto = function(e) {
+  const file = e.target.files[0]; if (!file) return;
+  _galeriaEditNewFile = file;
+  const r = new FileReader();
+  r.onload = ev => {
+    document.getElementById('ge-photo-preview').innerHTML =
+      `<img src="${ev.target.result}" style="width:100%;border-radius:10px;max-height:180px;object-fit:cover;">
+       <div style="font-size:12px;color:var(--accent);margin-top:4px;text-align:center;">✅ Nueva foto seleccionada</div>`;
+  };
+  r.readAsDataURL(file);
+  e.target.value = '';
+};
+
+window.saveGaleriaEdit = async function() {
+  const id = document.getElementById('ge-id').value;
+  const desc = document.getElementById('ge-desc').value.trim();
+  const btn = document.getElementById('btn-update-galeria');
+  const status = document.getElementById('ge-status');
+  btn.disabled = true;
+  try {
+    const updates = { desc };
+    if (_galeriaEditNewFile) {
+      status.textContent = '⏳ Subiendo nueva foto...';
+      updates.url = await uploadCloudinary(_galeriaEditNewFile);
+      updates.subidoPor = currentUser;
+      updates.subidoAt = new Date().toISOString();
+    }
+    await updateDoc(doc(db, 'galeria', id), updates);
+    showToast('✅ Foto actualizada', 'success');
+    closeGaleriaEditModal();
+  } catch(e) { showToast('❌ Error'); console.error(e); btn.disabled = false; status.textContent = ''; }
 };
 
 window.deleteGaleriaFoto = async function(id) {
@@ -2084,7 +2169,10 @@ function renderGaleria() {
               <div style="font-size:11px;color:var(--text-dim);">🕐 ${horaStr}</div>` : ''}
             </div>
           </div>
-          ${currentUser===ADMIN_USER ? `<button onclick="event.stopPropagation();window.deleteGaleriaFoto('${f.id}')" style="background:rgba(231,76,60,0.12);border:1px solid rgba(231,76,60,0.25);color:var(--red);border-radius:8px;padding:4px 10px;font-size:11px;font-weight:600;cursor:pointer;margin-top:6px;width:100%;">🗑️ Eliminar</button>` : ''}
+          <div style="display:flex;gap:6px;margin-top:6px;">
+            <button onclick="event.stopPropagation();window.openGaleriaEditModal('${f.id}')" style="flex:1;background:var(--accent-dim);border:1px solid rgba(245,166,35,0.3);color:var(--accent);border-radius:8px;padding:5px 10px;font-size:11px;font-weight:700;cursor:pointer;">✏️ Editar</button>
+            ${currentUser===ADMIN_USER ? `<button onclick="event.stopPropagation();window.deleteGaleriaFoto('${f.id}')" style="flex:1;background:rgba(231,76,60,0.12);border:1px solid rgba(231,76,60,0.25);color:var(--red);border-radius:8px;padding:5px 10px;font-size:11px;font-weight:700;cursor:pointer;">🗑️ Eliminar</button>` : ''}
+          </div>
         </div>
       </div>`;
     });
@@ -3155,6 +3243,7 @@ document.getElementById('mat-lista-modal').addEventListener('click',e=>{if(e.tar
 document.getElementById('mat-edit-modal').addEventListener('click',e=>{if(e.target===document.getElementById('mat-edit-modal'))window.closeMatEditModal();});
 document.getElementById('asist-reg-modal').addEventListener('click',e=>{if(e.target===document.getElementById('asist-reg-modal'))window.closeAsistRegModal();});
 document.getElementById('galeria-modal').addEventListener('click',e=>{if(e.target===document.getElementById('galeria-modal'))window.closeGaleriaModal();});
+document.getElementById('galeria-edit-modal').addEventListener('click',e=>{if(e.target===document.getElementById('galeria-edit-modal'))window.closeGaleriaEditModal();});
 document.getElementById('asist-edit-modal').addEventListener('click',e=>{if(e.target===document.getElementById('asist-edit-modal'))window.closeAsistEditModal();});
 document.getElementById('asist-calc-overlay').addEventListener('click',e=>{if(e.target===document.getElementById('asist-calc-overlay'))window.closeAsistCalc();});
 document.getElementById('asist-config-overlay').addEventListener('click',e=>{if(e.target===document.getElementById('asist-config-overlay'))window.closeAsistConfig();});
