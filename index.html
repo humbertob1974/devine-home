@@ -68,13 +68,13 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
 .compra-total-bar{background:var(--surface);border-radius:12px;padding:14px 16px;margin-bottom:14px;border:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;}
 
 /* GALERÍA */
-.galeria-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:16px;}
-.galeria-item{background:var(--surface);border-radius:12px;overflow:hidden;border:1px solid var(--border);cursor:pointer;transition:transform 0.15s;}
+.galeria-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-bottom:16px;}
+.galeria-item{background:var(--surface);border-radius:14px;overflow:hidden;border:1px solid var(--border);cursor:pointer;transition:transform 0.15s;}
 .galeria-item:active{transform:scale(0.97);}
 .galeria-img{width:100%;aspect-ratio:4/3;object-fit:cover;display:block;}
-.galeria-info{padding:8px 10px;}
-.galeria-desc{font-size:13px;font-weight:600;line-height:1.4;margin-bottom:4px;}
-.galeria-meta{font-size:10px;color:var(--text-dim);}
+.galeria-info{padding:10px 12px;}
+.galeria-desc{font-size:14px;font-weight:700;line-height:1.5;margin-bottom:6px;color:var(--text);}
+.galeria-meta{font-size:11px;color:var(--text-dim);}
 .galeria-add-btn{display:flex;align-items:center;justify-content:center;gap:8px;background:rgba(26,188,156,0.15);border:1px solid rgba(26,188,156,0.35);color:#1ABC9C;border-radius:12px;padding:14px;font-size:14px;font-weight:700;cursor:pointer;width:100%;margin-bottom:14px;}
 .galeria-add-btn:active{background:#1ABC9C;color:#fff;}
 
@@ -2069,13 +2069,22 @@ function renderGaleria() {
     html += `<div class="galeria-grid">`;
     proyFotos.forEach((f, idx) => {
       _photoMap['gal_'+f.id] = [f.url];
-      const fecha = f.subidoAt ? new Date(f.subidoAt).toLocaleDateString('es-MX',{day:'numeric',month:'short',year:'2-digit',hour:'2-digit',minute:'2-digit'}) : '';
+      const fechaObj = f.subidoAt ? new Date(f.subidoAt) : null;
+      const fechaStr = fechaObj ? fechaObj.toLocaleDateString('es-MX',{day:'numeric',month:'long',year:'numeric'}) : '';
+      const horaStr = fechaObj ? fechaObj.toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'}) : '';
       html += `<div class="galeria-item" onclick="window.openLightbox('gal_${f.id}',0)">
         <img class="galeria-img" src="${f.url}" loading="lazy">
         <div class="galeria-info">
-          ${f.desc ? `<div class="galeria-desc">${esc(f.desc)}</div>` : ''}
-          <div class="galeria-meta">👤 ${esc(f.subidoPor||'')} · 📅 ${fecha}</div>
-          ${currentUser===ADMIN_USER ? `<button onclick="event.stopPropagation();window.deleteGaleriaFoto('${f.id}')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:11px;font-weight:600;margin-top:4px;">🗑️ Eliminar</button>` : ''}
+          ${f.desc ? `<div class="galeria-desc">${esc(f.desc)}</div>` : '<div class="galeria-desc" style="color:var(--text-dim);font-style:italic;">Sin descripción</div>'}
+          <div style="display:flex;align-items:center;gap:6px;margin-top:6px;padding-top:6px;border-top:1px solid var(--border);">
+            <div style="width:22px;height:22px;border-radius:50%;background:${uColor(f.subidoPor||'?')};color:#fff;font-size:9px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;">${uInit(f.subidoPor||'?')}</div>
+            <div style="flex:1;min-width:0;">
+              <div style="font-size:12px;font-weight:700;color:${uColor(f.subidoPor||'?')};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(f.subidoPor||'')}</div>
+              ${fechaStr ? `<div style="font-size:11px;color:var(--text-dim);">📅 ${fechaStr}</div>
+              <div style="font-size:11px;color:var(--text-dim);">🕐 ${horaStr}</div>` : ''}
+            </div>
+          </div>
+          ${currentUser===ADMIN_USER ? `<button onclick="event.stopPropagation();window.deleteGaleriaFoto('${f.id}')" style="background:rgba(231,76,60,0.12);border:1px solid rgba(231,76,60,0.25);color:var(--red);border-radius:8px;padding:4px 10px;font-size:11px;font-weight:600;cursor:pointer;margin-top:6px;width:100%;">🗑️ Eliminar</button>` : ''}
         </div>
       </div>`;
     });
