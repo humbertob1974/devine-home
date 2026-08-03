@@ -1515,7 +1515,25 @@ window.selectModule = function(tab, icon, label, color) {
   else if(tab==='asistencia') renderAsistencia();
   else if(tab==='galeria') renderGaleria();
   else render();
+
+  // Update badge count after render
+  updateMenuBadge();
 };
+
+function updateMenuBadge() {
+  if (!currentProject) return;
+  const counts = {
+    pending:    tasks.filter(t=>t.projectId===currentProject.id&&!t.done).length,
+    history:    tasks.filter(t=>t.projectId===currentProject.id&&t.done).length,
+    avances:    avances.filter(a=>a.projectId===currentProject.id).length,
+    compras:    compras.filter(c=>c.projectId===currentProject.id).length,
+    materiales: matListas.filter(m=>m.projectId===currentProject.id).length,
+    asistencia: asistRegistros.filter(r=>r.projectId===currentProject.id).length,
+    galeria:    galeriaFotos.filter(f=>f.projectId===currentProject.id).length,
+  };
+  const count = counts[currentTab] || 0;
+  document.getElementById('module-menu-badge').textContent = count;
+}
 
 // Keep switchTab as alias for backward compatibility
 window.switchTab = function(tab) {
@@ -3045,8 +3063,7 @@ function render(){
   document.getElementById('badge-asistencia').textContent=asistRegistros.filter(r=>r.projectId===currentProject?.id).length;
   document.getElementById('badge-galeria').textContent=galeriaFotos.filter(f=>f.projectId===currentProject?.id).length;
   // Update current module badge in menu button
-  const curBadgeEl = document.getElementById('badge-'+currentTab);
-  if (curBadgeEl) document.getElementById('module-menu-badge').textContent = curBadgeEl.textContent;
+  updateMenuBadge();
   document.getElementById('stat-total').textContent=projectTasks.length;
   document.getElementById('stat-pending-count').textContent=pending.length;
   document.getElementById('stat-done').textContent=done.length;
