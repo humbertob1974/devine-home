@@ -1191,7 +1191,9 @@ window._doLogin = function(name) {
     return allowed.length === 0 || allowed.includes(name);
   });
   if(accessibleProjects.length > 0) {
-    currentProject = accessibleProjects[0];
+    const defaultId = localStorage.getItem('dh-default-project');
+    const defaultProj = defaultId && accessibleProjects.find(p => p.id === defaultId);
+    currentProject = defaultProj || accessibleProjects[0];
     showScreen('app');
     updateAppHeader();
     render();
@@ -1245,25 +1247,46 @@ function renderProjectScreen() {
     const ptasks = tasks.filter(t=>t.projectId===p.id);
     const pdone = ptasks.filter(t=>t.done).length;
     const ppending = ptasks.filter(t=>!t.done).length;
+    const defaultProjId = localStorage.getItem('dh-default-project');
+    const isDefault = p.id === defaultProjId;
+    const starBg = isDefault ? 'var(--accent)' : 'var(--surface2)';
+    const starBorder = isDefault ? 'var(--accent)' : 'rgba(255,255,255,0.08)';
+    const starColor = isDefault ? '#000' : '#9A9490';
+    const defBadge = isDefault ? '<div style="position:absolute;top:4px;left:4px;background:var(--accent);color:#000;border-radius:6px;padding:1px 6px;font-size:10px;font-weight:800;">⭐ Default</div>' : '';
+    const photoEl = p.photo ? `<img class="project-thumb" src="${p.photo}" loading="lazy">` : '<div class="project-thumb-placeholder">🏗️</div>';
+    const adminBtns = currentUser===ADMIN_USER ? `
+      <div style="display:flex;flex-direction:column;gap:6px;">
+        <button onclick="setDefaultProject('${p.id}')" title="Proyecto por defecto"
+          style="background:${starBg};border:1px solid ${starBorder};color:${starColor};border-radius:10px;width:38px;height:38px;font-size:16px;cursor:pointer;">⭐</button>
+        <button class="project-del" onclick="deleteProject('${p.id}')">🗑️</button>
+      </div>` : '';
     return `
     <div style="display:flex;align-items:center;gap:8px;">
-      <div class="project-card" style="flex:1;" onclick="selectProject('${p.id}')">
+      <div class="project-card" style="flex:1;${isDefault?'border-color:var(--accent);':''}" onclick="selectProject('${p.id}')">
         <div style="position:relative;flex-shrink:0;">
-          ${p.photo ? `<img class="project-thumb" src="${p.photo}" loading="lazy">` : `<div class="project-thumb-placeholder">🏗️</div>`}
-          <label style="position:absolute;bottom:4px;right:4px;background:rgba(0,0,0,0.65);border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:11px;" title="Cambiar foto" onclick="event.stopPropagation()">
+          ${photoEl}
+          <label style="position:absolute;bottom:4px;right:4px;background:rgba(0,0,0,0.65);border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:11px;" onclick="event.stopPropagation()">
             ✏️
             <input type="file" accept="image/*" style="display:none;" onchange="changeProjectPhoto(event,'${p.id}')">
           </label>
+          ${defBadge}
         </div>
         <div class="project-info">
           <div class="project-name">${esc(p.name)}</div>
           <div class="project-stats">⏳ ${ppending} pendientes · ✅ ${pdone} completadas</div>
         </div>
       </div>
-      ${currentUser===ADMIN_USER ? `<button class="project-del" onclick="deleteProject('${p.id}')">🗑️</button>` : ''}
+      ${adminBtns}
     </div>`;
   }).join('');
 }
+
+window.setDefaultProject = function(projectId) {
+  localStorage.setItem('dh-default-project', projectId);
+  const proj = projects.find(p => p.id === projectId);
+  showToast(`⭐ "${proj?.name}" es ahora el proyecto por defecto`, 'success');
+  renderProjectScreen();
+};
 
 window.changeProjectPhoto = async function(e, projectId) {
   const file = e.target.files[0]; if(!file) return;
@@ -3226,7 +3249,9 @@ onSnapshot(collection(db,'tasks'), snapshot=>{
       if(currentUser===ADMIN_USER) return true;
       const al = p.allowedUsers||[]; return al.length===0||al.includes(currentUser);
     });
-    currentProject = acc[0] || projects[0];
+    const defId = localStorage.getItem('dh-default-project');
+    const defProj = defId && acc.find(p => p.id === defId);
+    currentProject = defProj || acc[0] || projects[0];
     showScreen('app'); updateAppHeader(); render();
   }
   else if(currentUser) { showScreen('project-screen'); renderProjectScreen(); }
