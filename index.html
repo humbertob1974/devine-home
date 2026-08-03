@@ -265,33 +265,35 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
 .header-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
 .logo{display:flex;align-items:center;gap:10px;}
 .logo-icon{width:34px;height:34px;background:var(--accent);border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:18px;overflow:hidden;padding:0;}
-.logo-text{font-size:17px;font-weight:800;letter-spacing:-0.4px;}
-.logo-sub{font-size:11px;color:var(--text-dim);font-weight:500;text-transform:uppercase;}
+.logo-text{font-size:19px;font-weight:800;letter-spacing:-0.4px;}
+.logo-sub{font-size:13px;color:var(--text-dim);font-weight:500;text-transform:uppercase;}
 .header-actions{display:flex;gap:8px;}
 .hbtn{background:var(--surface2);border:1px solid var(--border);color:var(--text-dim);border-radius:50%;width:38px;height:38px;font-size:17px;cursor:pointer;display:flex;align-items:center;justify-content:center;}
 .hbtn.accent{background:var(--accent);color:#000;border-color:var(--accent);box-shadow:0 4px 14px rgba(245,166,35,0.35);}
 .hbtn:active{transform:scale(0.92);}
-.tabs{display:flex;gap:4px;background:var(--surface);border-radius:10px;padding:4px;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;}
-.tabs::-webkit-scrollbar{display:none;}
-.tab{flex:0 0 auto;scroll-snap-align:start;padding:7px 10px;border:none;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;background:transparent;color:var(--text-dim);transition:all 0.2s;display:flex;align-items:center;justify-content:center;gap:4px;white-space:nowrap;}
-.tab.active{background:var(--surface2);color:var(--text);box-shadow:0 1px 4px rgba(0,0,0,0.3);}
-.tab-badge{background:var(--accent);color:#000;border-radius:9px;font-size:9px;font-weight:700;padding:1px 5px;min-width:16px;text-align:center;}
-.tab.h-tab .tab-badge{background:var(--green);}
+/* MODULE DROPDOWN */
+.module-opt{width:100%;background:transparent;border:none;border-bottom:1px solid var(--border);color:var(--text);padding:14px 18px;display:flex;align-items:center;gap:14px;cursor:pointer;font-family:inherit;transition:background 0.15s;}
+.module-opt:last-child{border-bottom:none;}
+.module-opt:hover,.module-opt:active{background:var(--surface2);}
+.module-opt.active-module{background:var(--surface2);}
+.mopt-icon{font-size:22px;flex-shrink:0;}
+.mopt-label{font-size:17px;font-weight:700;flex:1;text-align:left;}
+.mopt-badge{border-radius:10px;font-size:12px;font-weight:800;padding:2px 9px;color:#fff;min-width:22px;text-align:center;}
 
 /* STATS */
 .stats-bar{display:flex;gap:10px;padding:12px 16px;}
 .stat-card{flex:1;background:var(--surface);border-radius:var(--radius-sm);padding:10px;text-align:center;border:1px solid var(--border);}
-.stat-num{font-size:20px;font-weight:800;letter-spacing:-0.5px;}
+.stat-num{font-size:24px;font-weight:800;letter-spacing:-0.5px;}
 .stat-num.accent{color:var(--accent);}
 .stat-num.green{color:var(--green);}
-.stat-label{font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.4px;margin-top:2px;font-weight:600;}
+.stat-label{font-size:12px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.4px;margin-top:2px;font-weight:600;}
 
 /* PROGRESS */
 .progress-wrap{padding:0 16px 12px;}
 
 /* MAIN */
 .main{padding:0 16px 100px;}
-.section-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:var(--text-dim);padding:4px 0 10px;}
+.section-label{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:var(--text-dim);padding:4px 0 10px;}
 
 /* TASK CARD */
 .task-card{background:var(--surface);border-radius:var(--radius);margin-bottom:14px;overflow:hidden;border:1px solid var(--border);}
@@ -312,8 +314,8 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
 .card-body{padding:14px 16px;}
 .card-header{display:flex;align-items:flex-start;gap:10px;margin-bottom:10px;}
 .card-title-group{flex:1;}
-.card-title{font-size:16px;font-weight:700;letter-spacing:-0.2px;line-height:1.3;margin-bottom:3px;}
-.card-meta{font-size:11px;color:var(--text-dim);display:flex;gap:10px;flex-wrap:wrap;}
+.card-title{font-size:18px;font-weight:700;letter-spacing:-0.2px;line-height:1.3;margin-bottom:3px;}
+.card-meta{font-size:13px;color:var(--text-dim);display:flex;gap:10px;flex-wrap:wrap;}
 .priority-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-top:5px;}
 .priority-alta{background:#E74C3C;}.priority-media{background:var(--accent);}.priority-baja{background:var(--green);}
 .history-tag{display:inline-flex;align-items:center;gap:5px;background:var(--green-dim);color:var(--green);border-radius:6px;padding:3px 8px;font-size:11px;font-weight:700;margin-bottom:6px;}
@@ -323,9 +325,9 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
 .comment-item{background:var(--surface2);border-radius:10px;padding:10px 12px;display:flex;gap:10px;align-items:flex-start;}
 .comment-avatar{width:28px;height:28px;border-radius:50%;font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;}
 .comment-body{flex:1;}
-.comment-author{font-size:11px;font-weight:700;margin-bottom:3px;}
-.comment-text{font-size:13px;line-height:1.5;}
-.comment-time{font-size:10px;color:var(--text-dim);margin-top:4px;}
+.comment-author{font-size:13px;font-weight:700;margin-bottom:3px;}
+.comment-text{font-size:15px;line-height:1.5;}
+.comment-time{font-size:12px;color:var(--text-dim);margin-top:4px;}
 .comment-input-row{display:flex;gap:8px;margin-top:8px;}
 .comment-input{flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:13px;padding:8px 12px;outline:none;font-family:inherit;}
 .comment-input:focus{border-color:rgba(245,166,35,0.5);}
@@ -340,8 +342,8 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
 /* EMPTY */
 .empty-state{text-align:center;padding:60px 20px;color:var(--text-dim);}
 .empty-icon{font-size:52px;margin-bottom:14px;}
-.empty-title{font-size:17px;font-weight:700;color:var(--text);margin-bottom:6px;}
-.empty-sub{font-size:13px;line-height:1.6;}
+.empty-title{font-size:20px;font-weight:700;color:var(--text);margin-bottom:6px;}
+.empty-sub{font-size:15px;line-height:1.6;}
 
 /* MODAL */
 .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:200;display:none;align-items:flex-end;backdrop-filter:blur(4px);}
@@ -510,14 +512,41 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
           <button class="hbtn accent" onclick="openModal()">+</button>
         </div>
       </div>
-      <div class="tabs">
-        <button class="tab active" id="tab-pending" onclick="switchTab('pending')">📋 Pendientes <span class="tab-badge" id="badge-pending">0</span></button>
-        <button class="tab h-tab" id="tab-history" onclick="switchTab('history')">✅ Completadas <span class="tab-badge" id="badge-history">0</span></button>
-        <button class="tab" id="tab-avances" onclick="switchTab('avances')">📸 Avances <span class="tab-badge" id="badge-avances" style="background:#9B59B6;">0</span></button>
-        <button class="tab" id="tab-compras" onclick="switchTab('compras')">🛒 Compras <span class="tab-badge" id="badge-compras" style="background:#3498DB;">0</span></button>
-        <button class="tab" id="tab-materiales" onclick="switchTab('materiales')">📦 Materiales <span class="tab-badge" id="badge-materiales" style="background:#27AE60;">0</span></button>
-        <button class="tab" id="tab-asistencia" onclick="switchTab('asistencia')">⏱️ Asistencia <span class="tab-badge" id="badge-asistencia" style="background:#9B59B6;">0</span></button>
-        <button class="tab" id="tab-galeria" onclick="switchTab('galeria')">🗂️ Generales <span class="tab-badge" id="badge-galeria" style="background:#1ABC9C;">0</span></button>
+      <!-- MÓDULO SELECTOR -->
+      <div style="position:relative;">
+        <button onclick="toggleModuleMenu()" id="module-menu-btn" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:13px 16px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;color:var(--text);">
+          <div style="display:flex;align-items:center;gap:10px;">
+            <span id="module-menu-icon" style="font-size:20px;">📋</span>
+            <span id="module-menu-label" style="font-size:16px;font-weight:700;">Pendientes</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span id="module-menu-badge" style="background:var(--accent);color:#000;border-radius:9px;font-size:12px;font-weight:800;padding:2px 8px;">0</span>
+            <span id="module-menu-arrow" style="font-size:18px;color:var(--text-dim);transition:transform 0.2s;">▾</span>
+          </div>
+        </button>
+        <div id="module-dropdown" style="display:none;position:absolute;top:calc(100% + 6px);left:0;right:0;background:var(--surface);border:1px solid var(--border);border-radius:14px;z-index:99;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,0.4);">
+          <button onclick="selectModule('pending','📋','Pendientes','var(--accent)')" class="module-opt" id="mopt-pending">
+            <span class="mopt-icon">📋</span><span class="mopt-label">Pendientes</span><span class="mopt-badge" id="badge-pending" style="background:var(--accent);">0</span>
+          </button>
+          <button onclick="selectModule('history','✅','Completadas','var(--green)')" class="module-opt" id="mopt-history">
+            <span class="mopt-icon">✅</span><span class="mopt-label">Completadas</span><span class="mopt-badge" id="badge-history" style="background:var(--green);">0</span>
+          </button>
+          <button onclick="selectModule('avances','📸','Avances','#9B59B6')" class="module-opt" id="mopt-avances">
+            <span class="mopt-icon">📸</span><span class="mopt-label">Avances</span><span class="mopt-badge" id="badge-avances" style="background:#9B59B6;">0</span>
+          </button>
+          <button onclick="selectModule('compras','🛒','Compras','#3498DB')" class="module-opt" id="mopt-compras">
+            <span class="mopt-icon">🛒</span><span class="mopt-label">Compras</span><span class="mopt-badge" id="badge-compras" style="background:#3498DB;">0</span>
+          </button>
+          <button onclick="selectModule('materiales','📦','Materiales','#27AE60')" class="module-opt" id="mopt-materiales">
+            <span class="mopt-icon">📦</span><span class="mopt-label">Materiales</span><span class="mopt-badge" id="badge-materiales" style="background:#27AE60;">0</span>
+          </button>
+          <button onclick="selectModule('asistencia','⏱️','Asistencia','#9B59B6')" class="module-opt" id="mopt-asistencia">
+            <span class="mopt-icon">⏱️</span><span class="mopt-label">Asistencia</span><span class="mopt-badge" id="badge-asistencia" style="background:#9B59B6;">0</span>
+          </button>
+          <button onclick="selectModule('galeria','🗂️','Generales','#1ABC9C')" class="module-opt" id="mopt-galeria">
+            <span class="mopt-icon">🗂️</span><span class="mopt-label">Generales</span><span class="mopt-badge" id="badge-galeria" style="background:#1ABC9C;">0</span>
+          </button>
+        </div>
       </div>
     </div>
   </header>
@@ -1434,15 +1463,29 @@ window.deleteTaskPhoto=async function(taskId,photoUrl){
   }catch(e){showToast('❌ Error');console.error(e);}
 };
 
-window.switchTab=function(tab){
-  currentTab=tab;
-  document.getElementById('tab-pending').classList.toggle('active',tab==='pending');
-  document.getElementById('tab-history').classList.toggle('active',tab==='history');
-  document.getElementById('tab-avances').classList.toggle('active',tab==='avances');
-  document.getElementById('tab-compras').classList.toggle('active',tab==='compras');
-  document.getElementById('tab-materiales').classList.toggle('active',tab==='materiales');
-  document.getElementById('tab-asistencia').classList.toggle('active',tab==='asistencia');
-  document.getElementById('tab-galeria').classList.toggle('active',tab==='galeria');
+let _moduleMenuOpen = false;
+
+window.toggleModuleMenu = function() {
+  _moduleMenuOpen = !_moduleMenuOpen;
+  document.getElementById('module-dropdown').style.display = _moduleMenuOpen ? 'block' : 'none';
+  document.getElementById('module-menu-arrow').style.transform = _moduleMenuOpen ? 'rotate(180deg)' : '';
+};
+
+window.selectModule = function(tab, icon, label, color) {
+  _moduleMenuOpen = false;
+  document.getElementById('module-dropdown').style.display = 'none';
+  document.getElementById('module-menu-arrow').style.transform = '';
+  document.getElementById('module-menu-icon').textContent = icon;
+  document.getElementById('module-menu-label').textContent = label;
+  const badge = document.getElementById('module-menu-badge');
+  badge.style.background = color;
+
+  // Update active state on options
+  document.querySelectorAll('.module-opt').forEach(el => el.classList.remove('active-module'));
+  const activeOpt = document.getElementById('mopt-'+tab);
+  if (activeOpt) activeOpt.classList.add('active-module');
+
+  currentTab = tab;
   if(tab==='avances') renderAvances();
   else if(tab==='compras') renderCompras();
   else if(tab==='materiales') renderMateriales();
@@ -1450,6 +1493,30 @@ window.switchTab=function(tab){
   else if(tab==='galeria') renderGaleria();
   else render();
 };
+
+// Keep switchTab as alias for backward compatibility
+window.switchTab = function(tab) {
+  const modules = {
+    pending:    ['📋','Pendientes','var(--accent)'],
+    history:    ['✅','Completadas','var(--green)'],
+    avances:    ['📸','Avances','#9B59B6'],
+    compras:    ['🛒','Compras','#3498DB'],
+    materiales: ['📦','Materiales','#27AE60'],
+    asistencia: ['⏱️','Asistencia','#9B59B6'],
+    galeria:    ['🗂️','Generales','#1ABC9C'],
+  };
+  const m = modules[tab] || modules.pending;
+  window.selectModule(tab, m[0], m[1], m[2]);
+};
+
+// Close dropdown when clicking outside
+document.addEventListener('click', e => {
+  if (_moduleMenuOpen && !e.target.closest('#module-menu-btn') && !e.target.closest('#module-dropdown')) {
+    _moduleMenuOpen = false;
+    document.getElementById('module-dropdown').style.display = 'none';
+    document.getElementById('module-menu-arrow').style.transform = '';
+  }
+});
 
 window.toggleComments=function(taskId,forceOpen){
   const body=document.getElementById(`comm-body-${taskId}`);
@@ -2954,6 +3021,9 @@ function render(){
   const projEmps = (asistConfig[currentProject?.id]||[]);
   document.getElementById('badge-asistencia').textContent=asistRegistros.filter(r=>r.projectId===currentProject?.id).length;
   document.getElementById('badge-galeria').textContent=galeriaFotos.filter(f=>f.projectId===currentProject?.id).length;
+  // Update current module badge in menu button
+  const curBadgeEl = document.getElementById('badge-'+currentTab);
+  if (curBadgeEl) document.getElementById('module-menu-badge').textContent = curBadgeEl.textContent;
   document.getElementById('stat-total').textContent=projectTasks.length;
   document.getElementById('stat-pending-count').textContent=pending.length;
   document.getElementById('stat-done').textContent=done.length;
