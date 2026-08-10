@@ -1225,6 +1225,7 @@ window.addUser = function() {
   setDoc(doc(db,'config','users'),{list:users});
   document.getElementById('new-user-name').value='';
   document.getElementById('new-user-pwd').value='';
+  renderUserScreen();
   showToast('👤 Usuario agregado','success');
 };
 
@@ -3219,10 +3220,22 @@ window.sendEmail=async function(){
 
 // ── FIRESTORE LISTENERS ──
 // Users
+const _usersTimeout = setTimeout(()=>{
+  if(users.length===0){
+    users=DEFAULT_USERS;
+    document.getElementById('loading-screen').classList.add('hidden');
+    showScreen('user-screen');
+    renderUserScreen();
+    showToast('⚠️ Usando usuarios locales — verifica conexión');
+  }
+},8000);
+
 onSnapshot(doc(db,'config','users'), snapshot=>{
+  clearTimeout(_usersTimeout);
   if(snapshot.exists()){
     const list = snapshot.data().list || [];
     users = list.map(u => typeof u==='string' ? {name:u, pwd:'temp123'} : u).filter(u=>u.name);
+    if(users.length===0) users=DEFAULT_USERS;
   } else {
     users = DEFAULT_USERS;
     setDoc(doc(db,'config','users'),{list:users});
@@ -3230,11 +3243,13 @@ onSnapshot(doc(db,'config','users'), snapshot=>{
   document.getElementById('loading-screen').classList.add('hidden');
   if(!currentUser) { showScreen('user-screen'); renderUserScreen(); }
 }, err=>{ 
+  clearTimeout(_usersTimeout);
   console.error('Users error:',err); 
   users=DEFAULT_USERS; 
   document.getElementById('loading-screen').classList.add('hidden');
   showScreen('user-screen');
-  renderUserScreen(); 
+  renderUserScreen();
+  showToast('⚠️ Error de conexión — verifica las reglas de Firestore');
 });
 
 // Projects
