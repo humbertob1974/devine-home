@@ -1305,7 +1305,15 @@ window.selectProject = function(id) {
   if(!currentProject)return;
   showScreen('app');
   updateAppHeader();
-  render();
+  // Render the currently active module
+  if(currentTab==='avances') renderAvances();
+  else if(currentTab==='compras') renderCompras();
+  else if(currentTab==='materiales') renderMateriales();
+  else if(currentTab==='asistencia') renderAsistencia();
+  else if(currentTab==='galeria') renderGaleria();
+  else render();
+  // Always update all badges and menu badge
+  updateMenuBadge();
 };
 
 window.deleteProject = async function(id) {
