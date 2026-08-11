@@ -884,6 +884,10 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
     <div class="modal-handle"></div>
     <div class="modal-title">🗂️ Subir Fotos — Generales</div>
     <div class="form-group">
+      <label class="form-label">Descripción general del grupo *</label>
+      <textarea class="form-textarea" id="g-desc-general" placeholder="ej. Avance de obra semana del 15 de julio, instalación de ventanas, etc." style="min-height:70px;"></textarea>
+    </div>
+    <div class="form-group">
       <label class="form-label">Selecciona las fotos</label>
       <div style="display:flex;gap:8px;margin-bottom:10px;">
         <label style="flex:1;background:var(--surface2);border:1px dashed rgba(255,255,255,0.18);border-radius:12px;color:var(--text-dim);padding:14px;font-size:13px;font-weight:600;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:6px;">
@@ -2118,10 +2122,12 @@ function renderCompras() {
 window.openGaleriaModal = function() {
   galeriaPhotoFiles = [];
   galeriaPhotoPreviews = [];
+  document.getElementById('g-desc-general').value = '';
   document.getElementById('galeria-previews').innerHTML = '';
   document.getElementById('galeria-upload-status').textContent = '';
   document.getElementById('btn-save-galeria').disabled = false;
   document.getElementById('galeria-modal').classList.add('open');
+  setTimeout(() => document.getElementById('g-desc-general').focus(), 300);
 };
 
 window.closeGaleriaModal = function() {
@@ -2165,6 +2171,8 @@ window.removeGaleriaPhoto = function(i) {
 };
 
 window.saveGaleriaFotos = async function() {
+  const descGeneral = document.getElementById('g-desc-general').value.trim();
+  if (!descGeneral) { showToast('⚠️ Escribe una descripción general'); return; }
   if (galeriaPhotoFiles.length === 0) { showToast('⚠️ Selecciona al menos una foto'); return; }
   if (!currentProject) return;
   const btn = document.getElementById('btn-save-galeria');
@@ -2173,23 +2181,21 @@ window.saveGaleriaFotos = async function() {
 
   try {
     const now = new Date().toISOString();
-    let uploaded = 0;
+    const urls = [];
     for (let i = 0; i < galeriaPhotoFiles.length; i++) {
-      const { file } = galeriaPhotoFiles[i];
-      const descInput = document.getElementById(`gdesc-${i}`);
-      const desc = descInput ? descInput.value.trim() : '';
       status.textContent = `⏳ Subiendo foto ${i+1} de ${galeriaPhotoFiles.length}...`;
-      const url = await uploadCloudinary(file);
-      await addDoc(collection(db, 'galeria'), {
-        url, desc: desc || '',
-        projectId: currentProject.id,
-        subidoPor: currentUser,
-        subidoAt: now,
-        createdAt: serverTimestamp()
-      });
-      uploaded++;
+      const url = await uploadCloudinary(galeriaPhotoFiles[i].file);
+      urls.push(url);
     }
-    showToast(`✅ ${uploaded} foto(s) subidas`, 'success');
+    await addDoc(collection(db, 'galeria'), {
+      urls,
+      desc: descGeneral,
+      projectId: currentProject.id,
+      subidoPor: currentUser,
+      subidoAt: now,
+      createdAt: serverTimestamp()
+    });
+    showToast(`✅ ${urls.length} foto(s) subidas`, 'success');
     closeGaleriaModal();
     switchTab('galeria');
   } catch(e) {
@@ -2201,12 +2207,14 @@ window.saveGaleriaFotos = async function() {
 let _galeriaEditNewFile = null;
 
 window.openGaleriaEditModal = function(id) {
-  const f = galeriaFotos.find(f => f.id === id);
-  if (!f) return;
+  const grupo = galeriaFotos.find(f => f.id === id);
+  if (!grupo) return;
+  const fotos = grupo.urls || (grupo.url ? [grupo.url] : []);
   document.getElementById('ge-id').value = id;
-  document.getElementById('ge-desc').value = f.desc || '';
-  document.getElementById('ge-photo-preview').innerHTML =
-    `<img src="${f.url}" style="width:100%;border-radius:10px;max-height:180px;object-fit:cover;">`;
+  document.getElementById('ge-desc').value = grupo.desc || '';
+  document.getElementById('ge-photo-preview').innerHTML = fotos.map(url =>
+    `<img src="${url}" style="width:calc(33% - 4px);aspect-ratio:1;object-fit:cover;border-radius:8px;display:inline-block;margin:2px;">`
+  ).join('');
   document.getElementById('ge-status').textContent = '';
   document.getElementById('btn-update-galeria').disabled = false;
   _galeriaEditNewFile = null;
@@ -2234,19 +2242,21 @@ window.handleGaleriaEditPhoto = function(e) {
 window.saveGaleriaEdit = async function() {
   const id = document.getElementById('ge-id').value;
   const desc = document.getElementById('ge-desc').value.trim();
+  if (!desc) { showToast('⚠️ Escribe una descripción'); return; }
   const btn = document.getElementById('btn-update-galeria');
   const status = document.getElementById('ge-status');
   btn.disabled = true;
   try {
     const updates = { desc };
     if (_galeriaEditNewFile) {
-      status.textContent = '⏳ Subiendo nueva foto...';
-      updates.url = await uploadCloudinary(_galeriaEditNewFile);
-      updates.subidoPor = currentUser;
-      updates.subidoAt = new Date().toISOString();
+      status.textContent = '⏳ Subiendo fotos adicionales...';
+      const grupo = galeriaFotos.find(f => f.id === id);
+      const existingUrls = grupo?.urls || (grupo?.url ? [grupo.url] : []);
+      const newUrl = await uploadCloudinary(_galeriaEditNewFile);
+      updates.urls = [...existingUrls, newUrl];
     }
     await updateDoc(doc(db, 'galeria', id), updates);
-    showToast('✅ Foto actualizada', 'success');
+    showToast('✅ Grupo actualizado', 'success');
     closeGaleriaEditModal();
   } catch(e) { showToast('❌ Error'); console.error(e); btn.disabled = false; status.textContent = ''; }
 };
@@ -2260,40 +2270,49 @@ window.deleteGaleriaFoto = async function(id) {
 function renderGaleria() {
   const container = document.getElementById('task-list');
   document.getElementById('section-label').textContent = 'Generalidades del proyecto';
-  const proyFotos = galeriaFotos.filter(f => f.projectId === currentProject?.id);
-  document.getElementById('badge-galeria').textContent = proyFotos.length;
+  const proyGrupos = galeriaFotos.filter(f => f.projectId === currentProject?.id);
+  document.getElementById('badge-galeria').textContent = proyGrupos.length;
 
   let html = `<button class="galeria-add-btn" onclick="openGaleriaModal()">🗂️ Subir fotos generales del proyecto</button>`;
 
-  if (proyFotos.length === 0) {
+  if (proyGrupos.length === 0) {
     html += `<div class="empty-state"><div class="empty-icon">📷</div><div class="empty-title">Sin fotos generales</div><div class="empty-sub">Sube fotos generales del proyecto con descripción para documentar aspectos importantes.</div></div>`;
   } else {
-    html += `<div class="galeria-grid">`;
-    proyFotos.forEach((f, idx) => {
-      _photoMap['gal_'+f.id] = [f.url];
-      const fechaObj = f.subidoAt ? new Date(f.subidoAt) : null;
+    proyGrupos.forEach(grupo => {
+      // Support both old (url) and new (urls) format
+      const fotos = grupo.urls || (grupo.url ? [grupo.url] : []);
+      _photoMap['gal_'+grupo.id] = fotos;
+      const fechaObj = grupo.subidoAt ? new Date(grupo.subidoAt) : null;
       const fechaStr = fechaObj ? fechaObj.toLocaleDateString('es-MX',{day:'numeric',month:'long',year:'numeric'}) : '';
       const horaStr = fechaObj ? fechaObj.toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'}) : '';
-      html += `<div class="galeria-item" onclick="window.openLightbox('gal_${f.id}',0)">
-        <img class="galeria-img" src="${f.url}" loading="lazy">
-        <div class="galeria-info">
-          ${f.desc ? `<div class="galeria-desc">${esc(f.desc)}</div>` : '<div class="galeria-desc" style="color:var(--text-dim);font-style:italic;">Sin descripción</div>'}
-          <div style="display:flex;align-items:center;gap:6px;margin-top:6px;padding-top:6px;border-top:1px solid var(--border);">
-            <div style="width:22px;height:22px;border-radius:50%;background:${uColor(f.subidoPor||'?')};color:#fff;font-size:9px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;">${uInit(f.subidoPor||'?')}</div>
-            <div style="flex:1;min-width:0;">
-              <div style="font-size:12px;font-weight:700;color:${uColor(f.subidoPor||'?')};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(f.subidoPor||'')}</div>
-              ${fechaStr ? `<div style="font-size:11px;color:var(--text-dim);">📅 ${fechaStr}</div>
-              <div style="font-size:11px;color:var(--text-dim);">🕐 ${horaStr}</div>` : ''}
+
+      html += `<div style="background:var(--surface);border-radius:var(--radius);margin-bottom:16px;overflow:hidden;border:1px solid var(--border);">
+        <!-- Header del grupo -->
+        <div style="padding:14px 16px;border-bottom:1px solid var(--border);">
+          <div style="font-size:16px;font-weight:800;margin-bottom:8px;">${esc(grupo.desc||'Sin descripción')}</div>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <div style="width:26px;height:26px;border-radius:50%;background:${uColor(grupo.subidoPor||'?')};color:#fff;font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;">${uInit(grupo.subidoPor||'?')}</div>
+            <div>
+              <div style="font-size:13px;font-weight:700;color:${uColor(grupo.subidoPor||'?')};">${esc(grupo.subidoPor||'')}</div>
+              <div style="font-size:12px;color:var(--text-dim);">📅 ${fechaStr} · 🕐 ${horaStr} · ${fotos.length} foto${fotos.length!==1?'s':''}</div>
             </div>
           </div>
-          <div style="display:flex;gap:6px;margin-top:6px;">
-            <button onclick="event.stopPropagation();window.openGaleriaEditModal('${f.id}')" style="flex:1;background:var(--accent-dim);border:1px solid rgba(245,166,35,0.3);color:var(--accent);border-radius:8px;padding:5px 10px;font-size:11px;font-weight:700;cursor:pointer;">✏️ Editar</button>
-            ${currentUser===ADMIN_USER ? `<button onclick="event.stopPropagation();window.deleteGaleriaFoto('${f.id}')" style="flex:1;background:rgba(231,76,60,0.12);border:1px solid rgba(231,76,60,0.25);color:var(--red);border-radius:8px;padding:5px 10px;font-size:11px;font-weight:700;cursor:pointer;">🗑️ Eliminar</button>` : ''}
-          </div>
+        </div>
+        <!-- Grid de fotos del grupo -->
+        ${fotos.length > 0 ? `
+        <div style="display:grid;grid-template-columns:repeat(${Math.min(fotos.length,3)},1fr);gap:3px;padding:3px;">
+          ${fotos.map((url,pi) => `
+            <div style="aspect-ratio:1;overflow:hidden;border-radius:6px;cursor:pointer;" onclick="window.openLightbox('gal_${grupo.id}',${pi})">
+              <img src="${url}" loading="lazy" style="width:100%;height:100%;object-fit:cover;display:block;">
+            </div>`).join('')}
+        </div>` : ''}
+        <!-- Acciones -->
+        <div style="display:flex;gap:8px;padding:10px 16px;">
+          <button onclick="window.openGaleriaEditModal('${grupo.id}')" style="flex:1;background:var(--accent-dim);border:1px solid rgba(245,166,35,0.3);color:var(--accent);border-radius:8px;padding:8px;font-size:13px;font-weight:700;cursor:pointer;">✏️ Editar</button>
+          ${currentUser===ADMIN_USER ? `<button onclick="window.deleteGaleriaFoto('${grupo.id}')" style="flex:1;background:rgba(231,76,60,0.12);border:1px solid rgba(231,76,60,0.25);color:var(--red);border-radius:8px;padding:8px;font-size:13px;font-weight:700;cursor:pointer;">🗑️ Eliminar grupo</button>` : ''}
         </div>
       </div>`;
     });
-    html += `</div>`;
   }
   container.innerHTML = html;
 }
