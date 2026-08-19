@@ -628,6 +628,46 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
   </div>
 </div>
 
+<!-- EDITAR TAREA MODAL -->
+<div class="modal-overlay" id="edit-task-modal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">✏️ Editar Tarea</div>
+    <input type="hidden" id="et-id">
+    <div class="form-group"><label class="form-label">Nombre *</label><input class="form-input" id="et-title" type="text" maxlength="80"></div>
+    <div class="form-group"><label class="form-label">Descripción</label><textarea class="form-textarea" id="et-desc" placeholder="Detalles, medidas, instrucciones..."></textarea></div>
+    <div class="form-group"><label class="form-label">Prioridad</label><select class="form-select" id="et-priority"><option value="alta">🔴 Alta</option><option value="media">🟡 Media</option><option value="baja">🟢 Baja</option></select></div>
+    <div class="form-group"><label class="form-label">Área / Zona</label><input class="form-input" id="et-area" type="text" placeholder="ej. Baño, Sala, Cocina"></div>
+    <div class="form-group">
+      <label class="form-label">Proveedor <span style="font-weight:400;text-transform:none;font-size:11px;">(opcional)</span></label>
+      <select class="form-select" id="et-proveedor">
+        <option value="">— Sin asignar —</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Fotos actuales</label>
+      <div id="et-current-photos" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px;"></div>
+      <label class="form-label" style="margin-top:8px;">Agregar más fotos</label>
+      <button class="photo-upload-btn" onclick="openEditTaskPicker()"><span style="font-size:22px;">📷</span> Agregar foto</button>
+      <div class="photo-preview-row" id="et-new-previews"></div>
+      <div class="upload-progress" id="et-status"></div>
+    </div>
+    <button class="btn-submit" id="btn-update-task" onclick="saveEditTask()">Guardar cambios</button>
+    <button class="btn-cancel" onclick="closeEditTaskModal()">Cancelar</button>
+  </div>
+</div>
+
+<!-- PHOTO PICKER EDIT TASK -->
+<div class="picker-overlay" id="edit-task-picker">
+  <div class="picker-menu">
+    <div class="picker-handle"></div>
+    <div class="picker-title">Agregar foto</div>
+    <div class="picker-opt"><span class="icon">📷</span><span>Tomar foto con cámara</span><input type="file" accept="image/*" capture="environment" onchange="handleEditTaskPhoto(event)"></div>
+    <div class="picker-opt"><span class="icon">🖼️</span><span>Elegir de galería</span><input type="file" accept="image/*" multiple onchange="handleEditTaskPhoto(event)"></div>
+    <button class="picker-cancel" onclick="closeEditTaskPicker()">Cancelar</button>
+  </div>
+</div>
+
 <!-- PHOTO PICKER FORM -->
 <div class="picker-overlay" id="form-picker">
   <div class="picker-menu">
@@ -1510,12 +1550,160 @@ window.addTask=async function(){
     let photoUrls=[];
     if(formPhotoFiles.length>0){ prog.textContent=`⏳ Subiendo ${formPhotoFiles.length} foto(s)...`; photoUrls=await Promise.all(formPhotoFiles.map(f=>uploadCloudinary(f))); }
     const area=document.getElementById('f-area').value.trim();
+    const desc=document.getElementById('f-desc').value.trim();
+    const priority=document.getElementById('f-priority').value;
     const provId = document.getElementById('f-proveedor').value;
     const provObj = provId ? proveedores.find(p=>p.id===provId) : null;
-    await addDoc(collection(db,'tasks'),{ title, desc:document.getElementById('f-desc').value.trim(), priority:document.getElementById('f-priority').value, area, photos:photoUrls, comments:[], done:false, createdAt:serverTimestamp(), createdBy:currentUser, doneAt:null, doneBy:null, projectId:currentProject.id, proveedorId:provId||null, proveedorNombre:provObj?.nombre||null, proveedorServicio:provObj?.servicio||null });
+    await addDoc(collection(db,'tasks'),{ title, desc, priority, area, photos:photoUrls, comments:[], done:false, createdAt:serverTimestamp(), createdBy:currentUser, doneAt:null, doneBy:null, projectId:currentProject.id, proveedorId:provId||null, proveedorNombre:provObj?.nombre||null, proveedorServicio:provObj?.servicio||null });
     sendPush('🏗️ Nueva tarea — '+currentProject.name, `${currentUser} agregó: "${title}"${area?' en '+area:''}`, photoUrls[0]||null);
-    showToast('✅ Tarea agregada','success'); closeModal();
+    // Email al proveedor si tiene email y fue asignado
+    if (provObj?.email) {
+      prog.textContent = '📧 Notificando al proveedor...';
+      const prioLabel = priority==='alta'?'🔴 Alta':priority==='media'?'🟡 Media':'🟢 Baja';
+      const photoLines = photoUrls.length > 0
+        ? '\n\nFotos adjuntas:\n' + photoUrls.map((u,i)=>`  Foto ${i+1}: ${u}`).join('\n')
+        : '';
+      const message =
+        `Estimado/a ${provObj.nombre},\n\n` +
+        `Se le ha asignado un nuevo pendiente en el proyecto "${currentProject.name}".\n\n` +
+        `${'─'.repeat(40)}\n\n` +
+        `📋 Tarea: ${title}\n` +
+        `${desc?'📝 Descripción: '+desc+'\n':''}` +
+        `${area?'📍 Área: '+area+'\n':''}` +
+        `⚡ Prioridad: ${prioLabel}\n` +
+        `👤 Asignado por: ${currentUser}` +
+        photoLines + '\n\n' +
+        `${'─'.repeat(40)}\n` +
+        `Enviado desde Administrador de Proyectos`;
+      try {
+        await emailjs.send('casa-devine','template_443j3n8',{
+          to_email: provObj.email,
+          to_name: provObj.nombre,
+          subject: `Nuevo pendiente asignado — ${currentProject.name}: ${title}`,
+          message,
+          from_name: 'Administrador de Proyectos — '+currentUser,
+          project_name: currentProject.name
+        });
+        showToast('✅ Tarea guardada y proveedor notificado','success');
+      } catch(e) {
+        console.error('Email proveedor error:',e);
+        showToast('✅ Tarea guardada (email falló)','success');
+      }
+    } else {
+      showToast('✅ Tarea agregada','success');
+    }
+    closeModal();
   }catch(e){ showToast('❌ Error al guardar'); console.error(e); btn.disabled=false; prog.textContent=''; }
+};
+
+// ── EDIT TASK ──
+let etNewPhotoFiles = [], etNewPhotoPreviews = [], etCurrentPhotos = [];
+
+window.openEditTaskModal = function(taskId) {
+  const t = tasks.find(t => t.id === taskId);
+  if (!t) return;
+  etNewPhotoFiles = []; etNewPhotoPreviews = []; etCurrentPhotos = [...(t.photos||[])];
+  document.getElementById('et-id').value = taskId;
+  document.getElementById('et-title').value = t.title || '';
+  document.getElementById('et-desc').value = t.desc || '';
+  document.getElementById('et-area').value = t.area || '';
+  document.getElementById('et-priority').value = t.priority || 'media';
+  document.getElementById('et-status').textContent = '';
+  document.getElementById('btn-update-task').disabled = false;
+  // Proveedores
+  const sel = document.getElementById('et-proveedor');
+  sel.innerHTML = '<option value="">— Sin asignar —</option>' +
+    proveedores.map(p=>`<option value="${p.id}" ${p.id===t.proveedorId?'selected':''}>${esc(p.nombre)} — ${esc(p.servicio)}</option>`).join('');
+  // Current photos
+  renderEtCurrentPhotos();
+  document.getElementById('et-new-previews').innerHTML = '';
+  document.getElementById('edit-task-modal').classList.add('open');
+  setTimeout(()=>document.getElementById('et-title').focus(),300);
+};
+
+function renderEtCurrentPhotos() {
+  document.getElementById('et-current-photos').innerHTML = etCurrentPhotos.length === 0
+    ? '<div style="font-size:13px;color:var(--text-dim);">Sin fotos</div>'
+    : etCurrentPhotos.map((url,i) => `
+      <div style="position:relative;width:80px;height:80px;">
+        <img src="${url}" style="width:80px;height:80px;object-fit:cover;border-radius:10px;border:1.5px solid var(--border);">
+        <button onclick="removeEtPhoto(${i})" style="position:absolute;top:-6px;right:-6px;background:var(--red);border:none;border-radius:50%;width:22px;height:22px;color:#fff;font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;">✕</button>
+      </div>`).join('');
+}
+window.renderEtCurrentPhotos = renderEtCurrentPhotos;
+
+window.removeEtPhoto = function(i) {
+  etCurrentPhotos.splice(i,1);
+  renderEtCurrentPhotos();
+};
+
+window.closeEditTaskModal = function() {
+  document.getElementById('edit-task-modal').classList.remove('open');
+};
+
+window.openEditTaskPicker = function() {
+  document.getElementById('edit-task-picker').classList.add('open');
+};
+window.closeEditTaskPicker = function() {
+  document.getElementById('edit-task-picker').classList.remove('open');
+};
+
+window.handleEditTaskPhoto = function(e) {
+  Array.from(e.target.files).forEach(file => {
+    etNewPhotoFiles.push(file);
+    const r = new FileReader();
+    r.onload = ev => {
+      etNewPhotoPreviews.push(ev.target.result);
+      document.getElementById('et-new-previews').innerHTML = etNewPhotoPreviews.map((s,i) =>
+        `<div class="photo-preview-thumb"><img src="${s}"><button onclick="etNewPhotoFiles.splice(${i},1);etNewPhotoPreviews.splice(${i},1);document.getElementById('et-new-previews').innerHTML=etNewPhotoPreviews.map((s2,j)=>'<div class=\"photo-preview-thumb\"><img src=\"'+s2+'\"></div>').join('');">✕</button></div>`
+      ).join('');
+    };
+    r.readAsDataURL(file);
+  });
+  e.target.value='';
+  closeEditTaskPicker();
+};
+
+window.saveEditTask = async function() {
+  const taskId = document.getElementById('et-id').value;
+  const title = document.getElementById('et-title').value.trim();
+  if (!title) { showToast('⚠️ Escribe el nombre'); return; }
+  const btn = document.getElementById('btn-update-task');
+  const status = document.getElementById('et-status');
+  btn.disabled = true;
+  try {
+    let newUrls = [];
+    if (etNewPhotoFiles.length > 0) {
+      status.textContent = `⏳ Subiendo ${etNewPhotoFiles.length} foto(s)...`;
+      newUrls = await Promise.all(etNewPhotoFiles.map(f => uploadCloudinary(f)));
+    }
+    const allPhotos = [...etCurrentPhotos, ...newUrls];
+    const provId = document.getElementById('et-proveedor').value;
+    const provObj = provId ? proveedores.find(p=>p.id===provId) : null;
+    const t = tasks.find(t=>t.id===taskId);
+    const updates = {
+      title,
+      desc: document.getElementById('et-desc').value.trim(),
+      priority: document.getElementById('et-priority').value,
+      area: document.getElementById('et-area').value.trim(),
+      photos: allPhotos,
+      proveedorId: provId||null,
+      proveedorNombre: provObj?.nombre||null,
+      proveedorServicio: provObj?.servicio||null,
+    };
+    await updateDoc(doc(db,'tasks',taskId), updates);
+    // Email proveedor if newly assigned
+    if (provObj?.email && provId !== t?.proveedorId) {
+      status.textContent = '📧 Notificando al proveedor...';
+      const prioLabel = updates.priority==='alta'?'🔴 Alta':updates.priority==='media'?'🟡 Media':'🟢 Baja';
+      const photoLines = allPhotos.length>0 ? ('\n\nFotos:\n'+allPhotos.map((u,i)=>`  Foto ${i+1}: ${u}`).join('\n')) : '';
+      const message = 'Estimado/a '+provObj.nombre+',\n\nSe le ha asignado un pendiente en "'+currentProject.name+'".\n\n'+'\u2500'.repeat(40)+'\n\n\uD83D\uDCCB '+title+'\n'+(updates.desc?'\uD83D\uDCDD '+updates.desc+'\n':'')+(updates.area?'\uD83D\uDCCD '+updates.area+'\n':'')+'\u26A1 Prioridad: '+prioLabel+'\n'+'\uD83D\uDC64 Asignado por: '+currentUser+photoLines+'\n\n'+'\u2500'.repeat(40)+'\nAdministrador de Proyectos';
+      try { await emailjs.send('casa-devine','template_443j3n8',{to_email:provObj.email,to_name:provObj.nombre,subject:`Pendiente asignado — ${currentProject.name}: ${title}`,message,from_name:'Admin — '+currentUser,project_name:currentProject.name}); }
+      catch(e){ console.error('Email error:',e); }
+    }
+    showToast('✅ Tarea actualizada','success');
+    closeEditTaskModal();
+  } catch(e){ showToast('❌ Error'); console.error(e); btn.disabled=false; status.textContent=''; }
 };
 
 // ── COMMENTS ──
@@ -3330,6 +3518,7 @@ function render(){
         </div>
         <div class="card-actions">
           <button class="btn-complete${t.done?' done':''}" onclick="window.toggleDone('${sid}')">${t.done?'↩️ Reactivar':'✅ Marcar como lista'}</button>
+          <button onclick="window.openEditTaskModal('${sid}')" style="background:var(--accent-dim);border:1.5px solid rgba(193,123,42,0.3);color:var(--accent);border-radius:10px;padding:11px 14px;font-size:15px;cursor:pointer;font-weight:700;">✏️</button>
           ${currentUser===ADMIN_USER?`<button class="btn-delete" onclick="window.deleteTask('${sid}')">🗑️</button>`:''}
         </div>
       </div>
@@ -3582,6 +3771,8 @@ document.getElementById('mat-edit-modal').addEventListener('click',e=>{if(e.targ
 document.getElementById('asist-reg-modal').addEventListener('click',e=>{if(e.target===document.getElementById('asist-reg-modal'))window.closeAsistRegModal();});
 document.getElementById('galeria-modal').addEventListener('click',e=>{if(e.target===document.getElementById('galeria-modal'))window.closeGaleriaModal();});
 document.getElementById('prov-modal').addEventListener('click',e=>{if(e.target===document.getElementById('prov-modal'))window.closeProvModal();});
+document.getElementById('edit-task-modal').addEventListener('click',e=>{if(e.target===document.getElementById('edit-task-modal'))window.closeEditTaskModal();});
+document.getElementById('edit-task-picker').addEventListener('click',e=>{if(e.target===document.getElementById('edit-task-picker'))window.closeEditTaskPicker();});
 document.getElementById('galeria-edit-modal').addEventListener('click',e=>{if(e.target===document.getElementById('galeria-edit-modal'))window.closeGaleriaEditModal();});
 document.getElementById('asist-edit-modal').addEventListener('click',e=>{if(e.target===document.getElementById('asist-edit-modal'))window.closeAsistEditModal();});
 document.getElementById('asist-calc-overlay').addEventListener('click',e=>{if(e.target===document.getElementById('asist-calc-overlay'))window.closeAsistCalc();});
