@@ -172,7 +172,30 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
     padding: 16px;
   }
 
-  .header-top { margin-bottom: 20px; }
+  .header-top { margin-bottom: 12px; }
+
+  /* Add task button full width in desktop sidebar */
+  .hbtn.accent {
+    width: 100% !important;
+    border-radius: 12px !important;
+    height: 44px !important;
+    font-size: 20px !important;
+    margin-top: 12px;
+  }
+
+  .header-actions {
+    flex-direction: column;
+    width: 100%;
+    gap: 8px;
+    margin-top: 4px;
+  }
+
+  .header-actions .hbtn:not(.accent) {
+    width: 100%;
+    border-radius: 12px !important;
+    height: 40px !important;
+    justify-content: center;
+  }
 
   /* Tabs become vertical in sidebar */
   .tabs {
