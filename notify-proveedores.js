@@ -1,166 +1,147 @@
 // notify-proveedores.js
 // Runs daily via GitHub Actions
-// Sends email reminders for pending tasks assigned to providers with email
+// Uses Cloudflare Worker proxy to send emails via EmailJS
 
 const https = require('https');
 
-// ── CONFIG ──
-const FIREBASE_PROJECT = 'devine-home';
-const EMAILJS_SERVICE  = 'casa-devine';
-const EMAILJS_TEMPLATE = 'template_443j3n8';
-const EMAILJS_PUBLIC   = 'rMb8s_6awE5PRaCXt';
-const EMAILJS_PRIVATE  = process.env.EMAILJS_PRIVATE_KEY; // set in GitHub Secrets
-const FIREBASE_KEY     = process.env.FIREBASE_API_KEY;    // set in GitHub Secrets
+const FIREBASE_PROJECT  = 'devine-home';
+const FIREBASE_KEY      = process.env.FIREBASE_API_KEY;
+const WORKER_URL        = 'claude-proxy.humbertoben.workers.dev';
 
-// ── HELPERS ──
-function httpsPost(hostname, path, data) {
+function request(options, body) {
   return new Promise((resolve, reject) => {
-    const body = JSON.stringify(data);
+    const data = body ? JSON.stringify(body) : null;
     const req = https.request({
-      hostname, path, method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) }
+      ...options,
+      headers: {
+        'Content-Type': 'application/json',
+        ...(data ? { 'Content-Length': Buffer.byteLength(data) } : {}),
+        ...(options.headers || {})
+      }
     }, res => {
       let raw = '';
       res.on('data', c => raw += c);
       res.on('end', () => {
-        try { resolve(JSON.parse(raw)); }
-        catch(e) { resolve(raw); }
+        console.log(`  HTTP ${res.statusCode}: ${raw.slice(0, 300)}`);
+        resolve({ status: res.statusCode, body: raw });
       });
     });
     req.on('error', reject);
-    req.write(body);
+    if (data) req.write(data);
     req.end();
   });
 }
 
-function httpsGet(hostname, path, headers = {}) {
-  return new Promise((resolve, reject) => {
-    const req = https.request({ hostname, path, method: 'GET', headers }, res => {
-      let raw = '';
-      res.on('data', c => raw += c);
-      res.on('end', () => {
-        try { resolve(JSON.parse(raw)); }
-        catch(e) { resolve(raw); }
-      });
-    });
-    req.on('error', reject);
-    req.end();
-  });
-}
-
-// ── FIRESTORE REST API ──
-async function firestoreGet(collection) {
-  const path = `/v1/projects/${FIREBASE_PROJECT}/databases/(default)/documents/${collection}?key=${FIREBASE_KEY}`;
-  const data = await httpsGet('firestore.googleapis.com', path);
+async function firestoreGet(col) {
+  const path = `/v1/projects/${FIREBASE_PROJECT}/databases/(default)/documents/${col}?pageSize=300&key=${FIREBASE_KEY}`;
+  const res = await request({ hostname: 'firestore.googleapis.com', path, method: 'GET' });
+  const data = JSON.parse(res.body);
   return (data.documents || []).map(doc => {
     const id = doc.name.split('/').pop();
-    const fields = doc.fields || {};
-    const parsed = {};
-    for (const [k, v] of Object.entries(fields)) {
-      if (v.stringValue !== undefined) parsed[k] = v.stringValue;
-      else if (v.booleanValue !== undefined) parsed[k] = v.booleanValue;
-      else if (v.integerValue !== undefined) parsed[k] = parseInt(v.integerValue);
-      else if (v.doubleValue !== undefined) parsed[k] = v.doubleValue;
-      else if (v.arrayValue) parsed[k] = (v.arrayValue.values || []).map(i => i.stringValue || '');
-      else if (v.nullValue !== undefined) parsed[k] = null;
+    const out = { id };
+    for (const [k, v] of Object.entries(doc.fields || {})) {
+      if ('stringValue'  in v) out[k] = v.stringValue;
+      else if ('booleanValue' in v) out[k] = v.booleanValue;
+      else if ('integerValue' in v) out[k] = parseInt(v.integerValue);
+      else if ('nullValue'    in v) out[k] = null;
+      else if ('arrayValue'   in v) out[k] = (v.arrayValue.values || []).map(i => i.stringValue || '');
     }
-    return { id, ...parsed };
+    return out;
   });
 }
 
-// ── EMAILJS ──
-async function sendEmail(toEmail, toName, subject, message) {
-  const result = await httpsPost('api.emailjs.com', '/api/v1.0/email/send', {
-    service_id: EMAILJS_SERVICE,
-    template_id: EMAILJS_TEMPLATE,
-    user_id: EMAILJS_PUBLIC,
-    accessToken: EMAILJS_PRIVATE,
-    template_params: {
-      to_email: toEmail,
-      to_name: toName,
-      subject,
-      message,
-      from_name: 'Administrador de Proyectos',
-      project_name: 'Recordatorio diario'
-    }
+async function sendEmail(toEmail, toName, subject, message, projectName) {
+  console.log(`  Sending to ${toEmail}...`);
+  const res = await request({
+    hostname: WORKER_URL,
+    path: '/',
+    method: 'POST',
+    headers: { 'X-Action': 'email' }
+  }, {
+    to_email: toEmail,
+    to_name: toName,
+    subject,
+    message,
+    from_name: 'Administrador de Proyectos',
+    project_name: projectName || 'Recordatorio diario'
   });
-  return result;
+  return res.status;
 }
 
-// ── MAIN ──
 async function main() {
   console.log('🔔 Iniciando recordatorios diarios...');
+  console.log('  FIREBASE_KEY present:', !!FIREBASE_KEY);
 
-  // Fetch tasks, providers and projects
   const [tasks, proveedores, projects] = await Promise.all([
     firestoreGet('tasks'),
     firestoreGet('proveedores'),
     firestoreGet('projects')
   ]);
 
-  // Filter: pending tasks with assigned provider
-  const pendingWithProv = tasks.filter(t =>
-    !t.done && t.proveedorId && t.proveedorNombre
-  );
+  console.log(`  Tasks: ${tasks.length}, Proveedores: ${proveedores.length}, Projects: ${projects.length}`);
 
-  console.log(`📋 Tareas pendientes con proveedor: ${pendingWithProv.length}`);
+  const pending = tasks.filter(t => !t.done && t.proveedorId);
+  console.log(`📋 Tareas pendientes con proveedor: ${pending.length}`);
 
-  // Group by provider
   const byProv = {};
-  for (const t of pendingWithProv) {
+  for (const t of pending) {
     const prov = proveedores.find(p => p.id === t.proveedorId);
-    if (!prov || !prov.email) continue; // skip if no email
+    if (!prov?.email) { console.log(`  Sin email: ${t.proveedorNombre}`); continue; }
     if (!byProv[prov.id]) byProv[prov.id] = { prov, tasks: [] };
     byProv[prov.id].tasks.push(t);
   }
 
-  let sent = 0, skipped = 0;
+  let sent = 0, errors = 0;
 
-  for (const { prov, tasks: provTasks } of Object.values(byProv)) {
+  for (const { prov, tasks: pt } of Object.values(byProv)) {
     const today = new Date().toLocaleDateString('es-MX', {
       weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
     });
 
-    const taskLines = provTasks.map((t, i) => {
+    const lines = pt.map((t, i) => {
       const proj = projects.find(p => p.id === t.projectId);
       const photos = (t.photos || []).length > 0
-        ? '\n   📷 Fotos: ' + (t.photos || []).map((u, pi) => `Foto ${pi+1}: ${u}`).join(' | ')
+        ? '\nFotos: ' + (t.photos || []).map((u, pi) => `Foto ${pi+1}: ${u}`).join(' | ')
         : '';
-      return `${i+1}. 📋 ${t.title}` +
-        `${t.area ? '\n   📍 Área: ' + t.area : ''}` +
-        `${t.desc ? '\n   📝 ' + t.desc : ''}` +
-        `${proj ? '\n   🏗️ Proyecto: ' + proj.name : ''}` +
+      return `${i+1}. ${t.title}` +
+        `${t.area   ? '\nArea: '     + t.area    : ''}` +
+        `${t.desc   ? '\n'           + t.desc    : ''}` +
+        `${proj     ? '\nProyecto: ' + proj.name : ''}` +
         photos;
     }).join('\n\n');
 
-    const subject = `Recordatorio — Tienes ${provTasks.length} tarea${provTasks.length > 1 ? 's' : ''} pendiente${provTasks.length > 1 ? 's' : ''}`;
-
+    const subject = `Recordatorio — ${pt.length} tarea${pt.length > 1 ? 's' : ''} pendiente${pt.length > 1 ? 's' : ''}`;
     const message =
       `Estimado/a ${prov.nombre},\n\n` +
-      `Este es un recordatorio automático de sus tareas pendientes al día de hoy, ${today}.\n\n` +
+      `Recordatorio de tareas pendientes al ${today}:\n\n` +
       `${'─'.repeat(40)}\n\n` +
-      taskLines + '\n\n' +
+      lines + '\n\n' +
       `${'─'.repeat(40)}\n` +
       `Por favor complete estas tareas y notifique al equipo.\n\n` +
       `Administrador de Proyectos`;
 
-    try {
-      await sendEmail(prov.email, prov.nombre, subject, message);
-      console.log(`✅ Email enviado a ${prov.nombre} (${prov.email}) — ${provTasks.length} tarea(s)`);
-      sent++;
-    } catch (e) {
-      console.error(`❌ Error enviando a ${prov.email}:`, e);
-      skipped++;
-    }
+    const proj = pt[0] ? projects.find(p => p.id === pt[0].projectId) : null;
 
-    // Small delay between emails
-    await new Promise(r => setTimeout(r, 1000));
+    try {
+      const status = await sendEmail(prov.email, prov.nombre, subject, message, proj?.name);
+      if (status === 200) {
+        console.log(`✅ Enviado a ${prov.nombre} (${prov.email})`);
+        sent++;
+      } else {
+        console.log(`❌ Fallo para ${prov.email} — status ${status}`);
+        errors++;
+      }
+    } catch(e) {
+      console.error(`❌ Error:`, e.message);
+      errors++;
+    }
+    await new Promise(r => setTimeout(r, 1500));
   }
 
-  console.log(`\n📊 Resumen: ${sent} emails enviados, ${skipped} errores`);
+  console.log(`\n📊 Resumen: ${sent} enviados, ${errors} errores`);
   if (Object.keys(byProv).length === 0) {
     console.log('ℹ️  No hay tareas pendientes con proveedores que tengan email.');
   }
 }
 
-main().catch(e => { console.error('Fatal error:', e); process.exit(1); });
+main().catch(e => { console.error('Fatal:', e); process.exit(1); });
