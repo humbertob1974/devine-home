@@ -68,6 +68,15 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
 .compra-add-btn:active{background:#3498DB;color:#fff;}
 .compra-total-bar{background:var(--surface);border-radius:12px;padding:14px 16px;margin-bottom:14px;border:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;}
 
+/* PROVEEDORES */
+.prov-card{background:var(--surface);border-radius:var(--radius);margin-bottom:12px;border:1px solid var(--border);padding:16px;box-shadow:var(--shadow);display:flex;align-items:flex-start;gap:14px;}
+.prov-avatar{width:48px;height:48px;border-radius:12px;background:var(--accent-dim);display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;border:1.5px solid rgba(193,123,42,0.2);}
+.prov-name{font-size:17px;font-weight:800;margin-bottom:3px;}
+.prov-servicio{font-size:13px;font-weight:700;color:var(--accent);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.3px;}
+.prov-meta{font-size:13px;color:var(--text-dim);display:flex;flex-direction:column;gap:3px;}
+.prov-add-btn{display:flex;align-items:center;justify-content:center;gap:8px;background:rgba(142,68,173,0.1);border:1.5px solid rgba(142,68,173,0.3);color:#8E44AD;border-radius:12px;padding:14px;font-size:15px;font-weight:700;cursor:pointer;width:100%;margin-bottom:14px;}
+.prov-add-btn:active{background:#8E44AD;color:#fff;}
+
 /* GALERÍA */
 .galeria-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-bottom:16px;}
 .galeria-item{background:var(--surface);border-radius:14px;overflow:hidden;border:1px solid var(--border);cursor:pointer;transition:transform 0.15s;box-shadow:var(--shadow);}
@@ -547,6 +556,9 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
           <button onclick="selectModule('galeria','🗂️','Generales','#1ABC9C')" class="module-opt" id="mopt-galeria">
             <span class="mopt-icon">🗂️</span><span class="mopt-label">Generales</span><span class="mopt-badge" id="badge-galeria" style="background:#1ABC9C;">0</span>
           </button>
+          <button onclick="selectModule('proveedores','🏢','Proveedores','#8E44AD')" class="module-opt" id="mopt-proveedores">
+            <span class="mopt-icon">🏢</span><span class="mopt-label">Proveedores</span><span class="mopt-badge" id="badge-proveedores" style="background:#8E44AD;">0</span>
+          </button>
         </div>
       </div>
     </div>
@@ -599,6 +611,12 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
     <div class="form-group"><label class="form-label">Descripción</label><textarea class="form-textarea" id="f-desc" placeholder="Detalles, medidas, instrucciones..."></textarea></div>
     <div class="form-group"><label class="form-label">Prioridad</label><select class="form-select" id="f-priority"><option value="alta">🔴 Alta</option><option value="media" selected>🟡 Media</option><option value="baja">🟢 Baja</option></select></div>
     <div class="form-group"><label class="form-label">Área / Zona</label><input class="form-input" id="f-area" type="text" placeholder="ej. Baño, Sala, Cocina"></div>
+    <div class="form-group">
+      <label class="form-label">Proveedor <span style="font-weight:400;text-transform:none;font-size:11px;">(opcional)</span></label>
+      <select class="form-select" id="f-proveedor">
+        <option value="">— Sin asignar —</option>
+      </select>
+    </div>
     <div class="form-group">
       <label class="form-label">Fotos</label>
       <button class="photo-upload-btn" onclick="openFormPicker()"><span style="font-size:22px;">📷</span> Agregar foto</button>
@@ -938,6 +956,37 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
   </div>
 </div>
 
+<!-- PROVEEDORES: NUEVO/EDITAR MODAL -->
+<div class="modal-overlay" id="prov-modal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="prov-modal-title">🏢 Nuevo Proveedor</div>
+    <input type="hidden" id="pv-id">
+    <div class="form-group">
+      <label class="form-label">Nombre o empresa *</label>
+      <input class="form-input" id="pv-nombre" type="text" placeholder="ej. Juan García / Plomería García">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Tipo de servicio *</label>
+      <input class="form-input" id="pv-servicio" type="text" placeholder="ej. Plomero, Electricista, Trabajo general...">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Teléfono</label>
+      <input class="form-input" id="pv-telefono" type="tel" placeholder="+52 555 123 4567">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Email</label>
+      <input class="form-input" id="pv-email" type="email" placeholder="correo@ejemplo.com">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Notas adicionales</label>
+      <textarea class="form-textarea" id="pv-notas" placeholder="Horario, especialidad, referencias..." style="min-height:60px;"></textarea>
+    </div>
+    <button class="btn-submit" id="btn-save-prov" onclick="saveProveedor()">Guardar proveedor</button>
+    <button class="btn-cancel" onclick="closeProvModal()">Cancelar</button>
+  </div>
+</div>
+
 <!-- ACCESS CONTROL MODAL -->
 <div id="access-overlay" style="position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:900;display:none;flex-direction:column;">
   <div style="background:var(--surface);padding:14px 20px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);flex-shrink:0;">
@@ -1125,7 +1174,8 @@ let asistRegistros = [];
 let asistConfig = {};
 let galeriaFotos = [];
 let galeriaPhotoFiles = [];
-let galeriaPhotoPreviews = []; // { projectId: [empleado1, empleado2] }
+let galeriaPhotoPreviews = [];
+let proveedores = []; // { projectId: [empleado1, empleado2] }
 let appLogoSrc = localStorage.getItem('app-logo') || 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj4KICA8ZGVmcz4KICAgIDxsaW5lYXJHcmFkaWVudCBpZD0iYmciIHgxPSIwJSIgeTE9IjAlIiB4Mj0iMTAwJSIgeTI9IjEwMCUiPgogICAgICA8c3RvcCBvZmZzZXQ9IjAlIiBzdHlsZT0ic3RvcC1jb2xvcjojRjVBNjIzO3N0b3Atb3BhY2l0eToxIiAvPgogICAgICA8c3RvcCBvZmZzZXQ9IjEwMCUiIHN0eWxlPSJzdG9wLWNvbG9yOiNFODg5MEE7c3RvcC1vcGFjaXR5OjEiIC8+CiAgICA8L2xpbmVhckdyYWRpZW50PgogICAgPGxpbmVhckdyYWRpZW50IGlkPSJzaGluZSIgeDE9IjAlIiB5MT0iMCUiIHgyPSIwJSIgeTI9IjEwMCUiPgogICAgICA8c3RvcCBvZmZzZXQ9IjAlIiBzdHlsZT0ic3RvcC1jb2xvcjojZmZmZmZmO3N0b3Atb3BhY2l0eTowLjI1IiAvPgogICAgICA8c3RvcCBvZmZzZXQ9IjEwMCUiIHN0eWxlPSJzdG9wLWNvbG9yOiNmZmZmZmY7c3RvcC1vcGFjaXR5OjAiIC8+CiAgICA8L2xpbmVhckdyYWRpZW50PgogIDwvZGVmcz4KICA8IS0tIEJhY2tncm91bmQgLS0+CiAgPHJlY3Qgd2lkdGg9IjEwMCIgaGVpZ2h0PSIxMDAiIHJ4PSIyMiIgZmlsbD0idXJsKCNiZykiLz4KICA8IS0tIFNoaW5lIG92ZXJsYXkgLS0+CiAgPHJlY3Qgd2lkdGg9IjEwMCIgaGVpZ2h0PSI1MCIgcng9IjIyIiBmaWxsPSJ1cmwoI3NoaW5lKSIvPgogIDwhLS0gQ2xpcGJvYXJkIGJhc2UgLS0+CiAgPHJlY3QgeD0iMjIiIHk9IjI4IiB3aWR0aD0iNTYiIGhlaWdodD0iNTIiIHJ4PSI2IiBmaWxsPSJyZ2JhKDAsMCwwLDAuMTgpIi8+CiAgPHJlY3QgeD0iMjIiIHk9IjI2IiB3aWR0aD0iNTYiIGhlaWdodD0iNTIiIHJ4PSI2IiBmaWxsPSJ3aGl0ZSIgb3BhY2l0eT0iMC45NSIvPgogIDwhLS0gQ2xpcGJvYXJkIHRvcCBjbGlwIC0tPgogIDxyZWN0IHg9IjM4IiB5PSIyMCIgd2lkdGg9IjI0IiBoZWlnaHQ9IjE0IiByeD0iNCIgZmlsbD0icmdiYSgwLDAsMCwwLjE4KSIvPgogIDxyZWN0IHg9IjM4IiB5PSIxOSIgd2lkdGg9IjI0IiBoZWlnaHQ9IjEzIiByeD0iNCIgZmlsbD0iI0U4ODkwQSIvPgogIDxjaXJjbGUgY3g9IjUwIiBjeT0iMjUiIHI9IjMiIGZpbGw9IndoaXRlIiBvcGFjaXR5PSIwLjYiLz4KICA8IS0tIENoZWNrbGlzdCBsaW5lcyAtLT4KICA8IS0tIExpbmUgMSAtIGNoZWNrZWQgLS0+CiAgPGNpcmNsZSBjeD0iMzIiIGN5PSI0MSIgcj0iNCIgZmlsbD0iI0Y1QTYyMyIvPgogIDxwYXRoIGQ9Ik0zMCA0MSBMMzEuNSA0Mi44IEwzNC41IDM5LjUiIHN0cm9rZT0id2hpdGUiIHN0cm9rZS13aWR0aD0iMS41IiBmaWxsPSJub25lIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiLz4KICA8cmVjdCB4PSI0MCIgeT0iMzkiIHdpZHRoPSIyOCIgaGVpZ2h0PSIzIiByeD0iMS41IiBmaWxsPSIjRTg4OTBBIiBvcGFjaXR5PSIwLjciLz4KICA8IS0tIExpbmUgMiAtIGNoZWNrZWQgLS0+CiAgPGNpcmNsZSBjeD0iMzIiIGN5PSI1MyIgcj0iNCIgZmlsbD0iI0Y1QTYyMyIvPgogIDxwYXRoIGQ9Ik0zMCA1MyBMMzEuNSA1NC44IEwzNC41IDUxLjUiIHN0cm9rZT0id2hpdGUiIHN0cm9rZS13aWR0aD0iMS41IiBmaWxsPSJub25lIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiLz4KICA8cmVjdCB4PSI0MCIgeT0iNTEiIHdpZHRoPSIyMiIgaGVpZ2h0PSIzIiByeD0iMS41IiBmaWxsPSIjRTg4OTBBIiBvcGFjaXR5PSIwLjciLz4KICA8IS0tIExpbmUgMyAtIHVuY2hlY2tlZCAtLT4KICA8Y2lyY2xlIGN4PSIzMiIgY3k9IjY1IiByPSI0IiBmaWxsPSJub25lIiBzdHJva2U9IiNGNUE2MjMiIHN0cm9rZS13aWR0aD0iMS41Ii8+CiAgPHJlY3QgeD0iNDAiIHk9IjYzIiB3aWR0aD0iMTgiIGhlaWdodD0iMyIgcng9IjEuNSIgZmlsbD0iI2NjYyIgb3BhY2l0eT0iMC44Ii8+Cjwvc3ZnPg==';
 
 const ADMIN_USER = 'Humberto';
@@ -1432,7 +1482,14 @@ window.handleCardPhoto=async function(e){
 };
 
 // ── MODAL TAREA ──
-window.openModal=function(){ document.getElementById('modal').classList.add('open'); setTimeout(()=>document.getElementById('f-title').focus(),300); };
+window.openModal=function(){
+  document.getElementById('modal').classList.add('open');
+  // Populate proveedores
+  const sel = document.getElementById('f-proveedor');
+  sel.innerHTML = '<option value="">— Sin asignar —</option>' +
+    proveedores.map(p=>`<option value="${p.id}">${esc(p.nombre)} — ${esc(p.servicio)}</option>`).join('');
+  setTimeout(()=>document.getElementById('f-title').focus(),300);
+};
 window.closeModal=function(){
   document.getElementById('modal').classList.remove('open');
   ['f-title','f-desc','f-area'].forEach(id=>document.getElementById(id).value='');
@@ -1453,7 +1510,9 @@ window.addTask=async function(){
     let photoUrls=[];
     if(formPhotoFiles.length>0){ prog.textContent=`⏳ Subiendo ${formPhotoFiles.length} foto(s)...`; photoUrls=await Promise.all(formPhotoFiles.map(f=>uploadCloudinary(f))); }
     const area=document.getElementById('f-area').value.trim();
-    await addDoc(collection(db,'tasks'),{ title, desc:document.getElementById('f-desc').value.trim(), priority:document.getElementById('f-priority').value, area, photos:photoUrls, comments:[], done:false, createdAt:serverTimestamp(), createdBy:currentUser, doneAt:null, doneBy:null, projectId:currentProject.id });
+    const provId = document.getElementById('f-proveedor').value;
+    const provObj = provId ? proveedores.find(p=>p.id===provId) : null;
+    await addDoc(collection(db,'tasks'),{ title, desc:document.getElementById('f-desc').value.trim(), priority:document.getElementById('f-priority').value, area, photos:photoUrls, comments:[], done:false, createdAt:serverTimestamp(), createdBy:currentUser, doneAt:null, doneBy:null, projectId:currentProject.id, proveedorId:provId||null, proveedorNombre:provObj?.nombre||null, proveedorServicio:provObj?.servicio||null });
     sendPush('🏗️ Nueva tarea — '+currentProject.name, `${currentUser} agregó: "${title}"${area?' en '+area:''}`, photoUrls[0]||null);
     showToast('✅ Tarea agregada','success'); closeModal();
   }catch(e){ showToast('❌ Error al guardar'); console.error(e); btn.disabled=false; prog.textContent=''; }
@@ -1528,6 +1587,7 @@ window.selectModule = function(tab, icon, label, color) {
   else if(tab==='materiales') renderMateriales();
   else if(tab==='asistencia') renderAsistencia();
   else if(tab==='galeria') renderGaleria();
+  else if(tab==='proveedores') renderProveedores();
   else render();
 
   // Update badge count after render
@@ -1537,13 +1597,14 @@ window.selectModule = function(tab, icon, label, color) {
 function updateMenuBadge() {
   if (!currentProject) return;
   const counts = {
-    pending:    tasks.filter(t=>t.projectId===currentProject.id&&!t.done).length,
-    history:    tasks.filter(t=>t.projectId===currentProject.id&&t.done).length,
-    avances:    avances.filter(a=>a.projectId===currentProject.id).length,
-    compras:    compras.filter(c=>c.projectId===currentProject.id).length,
-    materiales: matListas.filter(m=>m.projectId===currentProject.id).length,
-    asistencia: asistRegistros.filter(r=>r.projectId===currentProject.id).length,
-    galeria:    galeriaFotos.filter(f=>f.projectId===currentProject.id).length,
+    pending:     tasks.filter(t=>t.projectId===currentProject.id&&!t.done).length,
+    history:     tasks.filter(t=>t.projectId===currentProject.id&&t.done).length,
+    avances:     avances.filter(a=>a.projectId===currentProject.id).length,
+    compras:     compras.filter(c=>c.projectId===currentProject.id).length,
+    materiales:  matListas.filter(m=>m.projectId===currentProject.id).length,
+    asistencia:  asistRegistros.filter(r=>r.projectId===currentProject.id).length,
+    galeria:     galeriaFotos.filter(f=>f.projectId===currentProject.id).length,
+    proveedores: proveedores.length,
   };
   const count = counts[currentTab] || 0;
   document.getElementById('module-menu-badge').textContent = count;
@@ -1552,13 +1613,14 @@ function updateMenuBadge() {
 // Keep switchTab as alias for backward compatibility
 window.switchTab = function(tab) {
   const modules = {
-    pending:    ['📋','Pendientes','var(--accent)'],
-    history:    ['✅','Completadas','var(--green)'],
-    avances:    ['📸','Avances','#9B59B6'],
-    compras:    ['🛒','Compras','#3498DB'],
-    materiales: ['📦','Materiales','#27AE60'],
-    asistencia: ['⏱️','Asistencia','#9B59B6'],
-    galeria:    ['🗂️','Generales','#1ABC9C'],
+    pending:     ['📋','Pendientes','var(--accent)'],
+    history:     ['✅','Completadas','var(--green)'],
+    avances:     ['📸','Avances','#9B59B6'],
+    compras:     ['🛒','Compras','#3498DB'],
+    materiales:  ['📦','Materiales','#27AE60'],
+    asistencia:  ['⏱️','Asistencia','#9B59B6'],
+    galeria:     ['🗂️','Generales','#1ABC9C'],
+    proveedores: ['🏢','Proveedores','#8E44AD'],
   };
   const m = modules[tab] || modules.pending;
   window.selectModule(tab, m[0], m[1], m[2]);
@@ -2115,6 +2177,118 @@ function renderCompras() {
     }).join('');
   } else {
     html += `<div class="empty-state"><div class="empty-icon">🧾</div><div class="empty-title">Sin compras registradas</div><div class="empty-sub">Registra las compras de materiales con foto del recibo.</div></div>`;
+  }
+  container.innerHTML = html;
+}
+
+// ── PROVEEDORES ──
+window.openProvModal = function(id) {
+  const isEdit = !!id;
+  document.getElementById('prov-modal-title').textContent = isEdit ? '✏️ Editar Proveedor' : '🏢 Nuevo Proveedor';
+  document.getElementById('pv-id').value = id || '';
+  const prov = id ? proveedores.find(p => p.id === id) : null;
+  document.getElementById('pv-nombre').value = prov?.nombre || '';
+  document.getElementById('pv-servicio').value = prov?.servicio || '';
+  document.getElementById('pv-telefono').value = prov?.telefono || '';
+  document.getElementById('pv-email').value = prov?.email || '';
+  document.getElementById('pv-notas').value = prov?.notas || '';
+  document.getElementById('btn-save-prov').disabled = false;
+  document.getElementById('prov-modal').classList.add('open');
+  setTimeout(() => document.getElementById('pv-nombre').focus(), 300);
+};
+
+window.closeProvModal = function() {
+  document.getElementById('prov-modal').classList.remove('open');
+};
+
+window.saveProveedor = async function() {
+  const id = document.getElementById('pv-id').value;
+  const nombre = document.getElementById('pv-nombre').value.trim();
+  const servicio = document.getElementById('pv-servicio').value.trim();
+  const telefono = document.getElementById('pv-telefono').value.trim();
+  const email = document.getElementById('pv-email').value.trim();
+  const notas = document.getElementById('pv-notas').value.trim();
+  if (!nombre) { showToast('⚠️ Escribe el nombre del proveedor'); return; }
+  if (!servicio) { showToast('⚠️ Escribe el tipo de servicio'); return; }
+  const btn = document.getElementById('btn-save-prov');
+  btn.disabled = true;
+  try {
+    const data = { nombre, servicio, telefono, email, notas, updatedAt: serverTimestamp() };
+    if (id) {
+      await updateDoc(doc(db, 'proveedores', id), data);
+      showToast('✅ Proveedor actualizado', 'success');
+    } else {
+      data.creadoPor = currentUser;
+      data.createdAt = serverTimestamp();
+      await addDoc(collection(db, 'proveedores'), data);
+      showToast('✅ Proveedor agregado', 'success');
+    }
+    closeProvModal();
+  } catch(e) { showToast('❌ Error'); console.error(e); btn.disabled = false; }
+};
+
+window.deleteProveedor = async function(id, nombre) {
+  if (!confirm(`¿Eliminar el proveedor "${nombre}"?`)) return;
+  try { await deleteDoc(doc(db, 'proveedores', id)); showToast('🗑️ Proveedor eliminado'); }
+  catch(e) { showToast('❌ Error'); console.error(e); }
+};
+
+// Emoji for service type
+function provEmoji(servicio) {
+  const s = (servicio||'').toLowerCase();
+  if (/plom/.test(s)) return '🔧';
+  if (/elec/.test(s)) return '⚡';
+  if (/pint/.test(s)) return '🎨';
+  if (/alba|mam|conc/.test(s)) return '🧱';
+  if (/carp/.test(s)) return '🪚';
+  if (/jard|poda/.test(s)) return '🌿';
+  if (/lim|aseo/.test(s)) return '🧹';
+  if (/techo|imperme/.test(s)) return '🏠';
+  if (/vidri/.test(s)) return '🪟';
+  if (/general/.test(s)) return '🛠️';
+  return '🏢';
+}
+
+function renderProveedores() {
+  const container = document.getElementById('task-list');
+  document.getElementById('section-label').textContent = 'Catálogo de Proveedores';
+  document.getElementById('badge-proveedores').textContent = proveedores.length;
+
+  let html = `<button class="prov-add-btn" onclick="openProvModal()">🏢 Agregar proveedor</button>`;
+
+  if (proveedores.length === 0) {
+    html += `<div class="empty-state"><div class="empty-icon">🏢</div><div class="empty-title">Sin proveedores</div><div class="empty-sub">Agrega los proveedores y contratistas que trabajan en tus proyectos.</div></div>`;
+  } else {
+    // Group by service type
+    const grupos = {};
+    proveedores.forEach(p => {
+      const key = p.servicio || 'General';
+      if (!grupos[key]) grupos[key] = [];
+      grupos[key].push(p);
+    });
+
+    Object.keys(grupos).sort().forEach(servicio => {
+      html += `<div style="font-size:12px;font-weight:800;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.6px;padding:8px 0 6px;">${provEmoji(servicio)} ${esc(servicio)}</div>`;
+      grupos[servicio].forEach(p => {
+        html += `<div class="prov-card">
+          <div class="prov-avatar">${provEmoji(p.servicio)}</div>
+          <div style="flex:1;min-width:0;">
+            <div class="prov-name">${esc(p.nombre)}</div>
+            <div class="prov-servicio">${esc(p.servicio)}</div>
+            <div class="prov-meta">
+              ${p.telefono ? `<span>📱 <a href="tel:${esc(p.telefono)}" onclick="event.stopPropagation();" style="color:var(--text-dim);text-decoration:none;">${esc(p.telefono)}</a></span>` : ''}
+              ${p.email ? `<span>✉️ <a href="mailto:${esc(p.email)}" onclick="event.stopPropagation();" style="color:var(--text-dim);text-decoration:none;">${esc(p.email)}</a></span>` : ''}
+              ${p.notas ? `<span style="font-style:italic;">📝 ${esc(p.notas)}</span>` : ''}
+            </div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:6px;flex-shrink:0;">
+            ${p.telefono ? `<button onclick="window.open('sms:${esc(p.telefono)}')" style="background:var(--green-dim);border:1.5px solid rgba(30,122,74,0.3);color:var(--green);border-radius:10px;width:36px;height:36px;font-size:16px;cursor:pointer;">💬</button>` : ''}
+            <button onclick="openProvModal('${p.id}')" style="background:var(--accent-dim);border:1.5px solid rgba(193,123,42,0.3);color:var(--accent);border-radius:10px;width:36px;height:36px;font-size:14px;cursor:pointer;">✏️</button>
+            ${currentUser===ADMIN_USER ? `<button onclick="deleteProveedor('${p.id}','${esc(p.nombre)}')" style="background:rgba(192,57,43,0.08);border:1.5px solid rgba(192,57,43,0.2);color:var(--red);border-radius:10px;width:36px;height:36px;font-size:14px;cursor:pointer;">🗑️</button>` : ''}
+          </div>
+        </div>`;
+      });
+    });
   }
   container.innerHTML = html;
 }
@@ -3137,7 +3311,7 @@ function render(){
           <div class="priority-dot priority-${t.priority}"></div>
           <div class="card-title-group">
             <div class="card-title">${esc(t.title)}</div>
-            <div class="card-meta">${t.area?`<span>📍 ${esc(t.area)}</span>`:''}<span>📅 ${fDate(t.createdAt)}</span>${t.createdBy?`<span>👤 ${esc(t.createdBy)}</span>`:''}<span>${pLabel(t.priority)}</span></div>
+            <div class="card-meta">${t.area?`<span>📍 ${esc(t.area)}</span>`:''}<span>📅 ${fDate(t.createdAt)}</span>${t.createdBy?`<span>👤 ${esc(t.createdBy)}</span>`:''}<span>${pLabel(t.priority)}</span>${t.proveedorNombre?`<span style="color:#8E44AD;font-weight:700;">🏢 ${esc(t.proveedorNombre)}</span>`:''}</div>
           </div>
         </div>
         ${t.desc?`<div style="font-size:13px;color:var(--text-dim);margin-bottom:10px;line-height:1.5;">${esc(t.desc)}</div>`:''}
@@ -3320,6 +3494,15 @@ onSnapshot(collection(db,'tasks'), snapshot=>{
   setTimeout(()=>clearInterval(waitLogin),30000);
 },{error:e=>{ document.getElementById('loading-screen').classList.add('hidden'); showScreen('user-screen'); renderUserScreen(); console.error(e); }});
 
+// Proveedores listener
+onSnapshot(collection(db,'proveedores'), snapshot=>{
+  proveedores = snapshot.docs.map(d=>({id:d.id,...d.data()}));
+  proveedores.sort((a,b)=>(a.nombre||'').localeCompare(b.nombre||''));
+  const badge = document.getElementById('badge-proveedores');
+  if (badge) badge.textContent = proveedores.length;
+  if(currentUser&&currentTab==='proveedores') renderProveedores();
+});
+
 // Galería listener
 onSnapshot(collection(db,'galeria'), snapshot=>{
   galeriaFotos = snapshot.docs.map(d=>({id:d.id,...d.data()}));
@@ -3398,6 +3581,7 @@ document.getElementById('mat-lista-modal').addEventListener('click',e=>{if(e.tar
 document.getElementById('mat-edit-modal').addEventListener('click',e=>{if(e.target===document.getElementById('mat-edit-modal'))window.closeMatEditModal();});
 document.getElementById('asist-reg-modal').addEventListener('click',e=>{if(e.target===document.getElementById('asist-reg-modal'))window.closeAsistRegModal();});
 document.getElementById('galeria-modal').addEventListener('click',e=>{if(e.target===document.getElementById('galeria-modal'))window.closeGaleriaModal();});
+document.getElementById('prov-modal').addEventListener('click',e=>{if(e.target===document.getElementById('prov-modal'))window.closeProvModal();});
 document.getElementById('galeria-edit-modal').addEventListener('click',e=>{if(e.target===document.getElementById('galeria-edit-modal'))window.closeGaleriaEditModal();});
 document.getElementById('asist-edit-modal').addEventListener('click',e=>{if(e.target===document.getElementById('asist-edit-modal'))window.closeAsistEditModal();});
 document.getElementById('asist-calc-overlay').addEventListener('click',e=>{if(e.target===document.getElementById('asist-calc-overlay'))window.closeAsistCalc();});
