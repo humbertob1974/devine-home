@@ -1599,14 +1599,7 @@ window.addTask=async function(){
         `${'─'.repeat(40)}\n` +
         `Enviado desde Administrador de Proyectos`;
       try {
-        await emailjs.send('casa-devine','template_443j3n8',{
-          to_email: provObj.email,
-          to_name: provObj.nombre,
-          subject: `Nuevo pendiente asignado — ${currentProject.name}: ${title}`,
-          message,
-          from_name: 'Administrador de Proyectos — '+currentUser,
-          project_name: currentProject.name
-        });
+        await sendEmailViaWorker(provObj.email, provObj.nombre, `Nuevo pendiente asignado — ${currentProject.name}: ${title}`, message, currentProject.name);
         showToast('✅ Tarea guardada y proveedor notificado','success');
       } catch(e) {
         console.error('Email proveedor error:',e);
@@ -1721,7 +1714,7 @@ window.saveEditTask = async function() {
       const prioLabel = updates.priority==='alta'?'🔴 Alta':updates.priority==='media'?'🟡 Media':'🟢 Baja';
       const photoLines = allPhotos.length>0 ? ('\n\nFotos:\n'+allPhotos.map((u,i)=>`  Foto ${i+1}: ${u}`).join('\n')) : '';
       const message = 'Estimado/a '+provObj.nombre+',\n\nSe le ha asignado un pendiente en "'+currentProject.name+'".\n\n'+'\u2500'.repeat(40)+'\n\n\uD83D\uDCCB '+title+'\n'+(updates.desc?'\uD83D\uDCDD '+updates.desc+'\n':'')+(updates.area?'\uD83D\uDCCD '+updates.area+'\n':'')+'\u26A1 Prioridad: '+prioLabel+'\n'+'\uD83D\uDC64 Asignado por: '+currentUser+photoLines+'\n\n'+'\u2500'.repeat(40)+'\nAdministrador de Proyectos';
-      try { await emailjs.send('casa-devine','template_443j3n8',{to_email:provObj.email,to_name:provObj.nombre,subject:`Pendiente asignado — ${currentProject.name}: ${title}`,message,from_name:'Admin — '+currentUser,project_name:currentProject.name}); }
+      try { await sendEmailViaWorker(provObj.email, provObj.nombre, `Pendiente asignado — ${currentProject.name}: ${title}`, message, currentProject.name); }
       catch(e){ console.error('Email error:',e); }
     }
     showToast('✅ Tarea actualizada','success');
@@ -2319,14 +2312,7 @@ window.saveCompra = async function() {
 
       for (const u of recipients) {
         try {
-          await emailjs.send('casa-devine', 'template_443j3n8', {
-            to_email: u.email,
-            to_name: u.name,
-            subject: `Nueva compra — ${proyecto.name}: ${montoFmt} en ${tienda}`,
-            message,
-            from_name: 'Casa Devine — ' + currentUser,
-            project_name: proyecto.name
-          });
+          await sendEmailViaWorker(u.email, u.name, `Nueva compra — ${proyecto.name}: ${montoFmt} en ${tienda}`, message, proyecto.name);
         } catch(e) { console.error('Email error for', u.email, e); }
       }
     }
@@ -3362,14 +3348,7 @@ window.sendAvanceEmail = async function() {
   let sent = 0, errors = 0;
   for (const recipient of selected) {
     try {
-      await emailjs.send('casa-devine', 'template_443j3n8', {
-        to_email: recipient.email,
-        to_name: recipient.name,
-        subject: subject,
-        message: messageBody,
-        from_name: 'Casa Devine — ' + (currentUser || 'Admin'),
-        project_name: currentProject?.name || 'Casa Devine'
-      });
+      await sendEmailViaWorker(recipient.email, recipient.name, subject, messageBody);
       sent++;
     } catch(e) {
       console.error('EmailJS error for', recipient.email, e);
@@ -3461,6 +3440,25 @@ window.toggleAvComments = function(avId, forceOpen) {
   body.style.display = (forceOpen || !isOpen) ? 'block' : 'none';
   if (!isOpen || forceOpen) setTimeout(() => { const inp = document.getElementById(`av-comm-input-${avId}`); if(inp) inp.focus(); }, 100);
 };
+
+// ── EMAIL VIA WORKER ──
+async function sendEmailViaWorker(toEmail, toName, subject, message, projectName) {
+  const response = await fetch('https://claude-proxy.humbertoben.workers.dev', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-Action': 'email' },
+    body: JSON.stringify({
+      to_email: toEmail,
+      to_name: toName,
+      subject,
+      message,
+      from_name: 'Administrador de Proyectos — ' + (currentUser||'Admin'),
+      project_name: projectName || currentProject?.name || 'Casa Devine'
+    })
+  });
+  const data = await response.json();
+  if (data.status !== 200) throw new Error('EmailJS status: ' + data.status + ' — ' + data.body);
+  return data;
+}
 
 // ── RENDER ──
 function render(){
