@@ -118,7 +118,9 @@ async function main() {
       lines + '\n\n' +
       `${'─'.repeat(40)}\n` +
       `Por favor complete estas tareas y notifique al equipo.\n\n` +
-      `Administrador de Proyectos`;
+      `HUMBERTO BENAVIDES (Owner)\n` +
+      `Sistema de Notificaciones BENAFUENTE\n` +
+      `943 CR 652, Devine TX. 78016`;
 
     const proj = pt[0] ? projects.find(p => p.id === pt[0].projectId) : null;
 
