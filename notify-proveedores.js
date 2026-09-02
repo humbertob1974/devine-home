@@ -1,6 +1,6 @@
 // notify-proveedores.js
 // Runs daily via GitHub Actions - v3 HTML emails
-// Uses Cloudflare Worker proxy to send emails via EmailJS
+// Uses Cloudflare Worker proxy to send emails via EmailJS v3
 
 const https = require('https');
 
