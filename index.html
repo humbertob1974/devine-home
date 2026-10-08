@@ -1169,7 +1169,7 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
-import { getFirestore, collection, doc, addDoc, updateDoc, deleteDoc, onSnapshot, serverTimestamp, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, collection, doc, addDoc, updateDoc, deleteDoc, onSnapshot, serverTimestamp, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 
 // ── CLOUDINARY ──
 const CLOUD = 'dhkrtibcv', PRESET = 'uurfgcxv';
@@ -1193,7 +1193,14 @@ async function sendPush(title, message, imageUrl) {
 
 // ── FIREBASE ──
 const fbApp = initializeApp({ apiKey:"AIzaSyCVJ7H6P5KnTlpsRAvP7o0VIeztt1xF9Xg", authDomain:"devine-home.firebaseapp.com", projectId:"devine-home", storageBucket:"devine-home.firebasestorage.app", messagingSenderId:"815507342981", appId:"1:815507342981:web:1ca80bc05b9a40d7e04bec" });
-const db = getFirestore(fbApp);
+let db;
+try {
+  // Guarda una copia local de la base: si no hay señal, la app usa los últimos datos reales que bajó
+  db = initializeFirestore(fbApp, { localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }) });
+} catch(e) {
+  console.warn('Caché persistente no disponible, usando modo normal:', e);
+  db = initializeFirestore(fbApp, {});
+}
 
 // ── HELPERS ──
 const COLORS = ['#F5A623','#3498DB','#E74C3C','#9B59B6','#1ABC9C','#E67E22','#2ECC71','#E91E63'];
@@ -1212,8 +1219,17 @@ async function uploadCloudinary(file) {
 }
 
 // ── STATE ──
-const DEFAULT_USERS = [{ name:'Humberto', pwd:'Devine5062211@' },{ name:'Gely', pwd:'gely123' },{ name:'Veronica', pwd:'vero123' }];
+// Los usuarios y contraseñas viven SOLO en Firestore (config/users). No hay lista de respaldo en el código.
 let users = [];
+let _usersLoaded = false; // true solo cuando la lista vino de Firestore (servidor o caché local)
+function saveUsersDoc() {
+  if (!_usersLoaded || !users.length) { showToast('⚠️ Sin conexión: no se pueden guardar cambios de usuarios'); return Promise.resolve(); }
+  return setDoc(doc(db,'config','users'), { list: users });
+}
+function adminPwdOk(pwd) {
+  const admin = users.find(u => u.name === ADMIN_USER);
+  return !!(admin && admin.pwd && pwd === admin.pwd);
+}
 
 let currentUser = null;
 let currentProject = null; // { id, name, photo }
@@ -1243,7 +1259,6 @@ let proveedores = []; // { projectId: [empleado1, empleado2] }
 let appLogoSrc = localStorage.getItem('app-logo') || 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj4KICA8ZGVmcz4KICAgIDxsaW5lYXJHcmFkaWVudCBpZD0iYmciIHgxPSIwJSIgeTE9IjAlIiB4Mj0iMTAwJSIgeTI9IjEwMCUiPgogICAgICA8c3RvcCBvZmZzZXQ9IjAlIiBzdHlsZT0ic3RvcC1jb2xvcjojRjVBNjIzO3N0b3Atb3BhY2l0eToxIiAvPgogICAgICA8c3RvcCBvZmZzZXQ9IjEwMCUiIHN0eWxlPSJzdG9wLWNvbG9yOiNFODg5MEE7c3RvcC1vcGFjaXR5OjEiIC8+CiAgICA8L2xpbmVhckdyYWRpZW50PgogICAgPGxpbmVhckdyYWRpZW50IGlkPSJzaGluZSIgeDE9IjAlIiB5MT0iMCUiIHgyPSIwJSIgeTI9IjEwMCUiPgogICAgICA8c3RvcCBvZmZzZXQ9IjAlIiBzdHlsZT0ic3RvcC1jb2xvcjojZmZmZmZmO3N0b3Atb3BhY2l0eTowLjI1IiAvPgogICAgICA8c3RvcCBvZmZzZXQ9IjEwMCUiIHN0eWxlPSJzdG9wLWNvbG9yOiNmZmZmZmY7c3RvcC1vcGFjaXR5OjAiIC8+CiAgICA8L2xpbmVhckdyYWRpZW50PgogIDwvZGVmcz4KICA8IS0tIEJhY2tncm91bmQgLS0+CiAgPHJlY3Qgd2lkdGg9IjEwMCIgaGVpZ2h0PSIxMDAiIHJ4PSIyMiIgZmlsbD0idXJsKCNiZykiLz4KICA8IS0tIFNoaW5lIG92ZXJsYXkgLS0+CiAgPHJlY3Qgd2lkdGg9IjEwMCIgaGVpZ2h0PSI1MCIgcng9IjIyIiBmaWxsPSJ1cmwoI3NoaW5lKSIvPgogIDwhLS0gQ2xpcGJvYXJkIGJhc2UgLS0+CiAgPHJlY3QgeD0iMjIiIHk9IjI4IiB3aWR0aD0iNTYiIGhlaWdodD0iNTIiIHJ4PSI2IiBmaWxsPSJyZ2JhKDAsMCwwLDAuMTgpIi8+CiAgPHJlY3QgeD0iMjIiIHk9IjI2IiB3aWR0aD0iNTYiIGhlaWdodD0iNTIiIHJ4PSI2IiBmaWxsPSJ3aGl0ZSIgb3BhY2l0eT0iMC45NSIvPgogIDwhLS0gQ2xpcGJvYXJkIHRvcCBjbGlwIC0tPgogIDxyZWN0IHg9IjM4IiB5PSIyMCIgd2lkdGg9IjI0IiBoZWlnaHQ9IjE0IiByeD0iNCIgZmlsbD0icmdiYSgwLDAsMCwwLjE4KSIvPgogIDxyZWN0IHg9IjM4IiB5PSIxOSIgd2lkdGg9IjI0IiBoZWlnaHQ9IjEzIiByeD0iNCIgZmlsbD0iI0U4ODkwQSIvPgogIDxjaXJjbGUgY3g9IjUwIiBjeT0iMjUiIHI9IjMiIGZpbGw9IndoaXRlIiBvcGFjaXR5PSIwLjYiLz4KICA8IS0tIENoZWNrbGlzdCBsaW5lcyAtLT4KICA8IS0tIExpbmUgMSAtIGNoZWNrZWQgLS0+CiAgPGNpcmNsZSBjeD0iMzIiIGN5PSI0MSIgcj0iNCIgZmlsbD0iI0Y1QTYyMyIvPgogIDxwYXRoIGQ9Ik0zMCA0MSBMMzEuNSA0Mi44IEwzNC41IDM5LjUiIHN0cm9rZT0id2hpdGUiIHN0cm9rZS13aWR0aD0iMS41IiBmaWxsPSJub25lIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiLz4KICA8cmVjdCB4PSI0MCIgeT0iMzkiIHdpZHRoPSIyOCIgaGVpZ2h0PSIzIiByeD0iMS41IiBmaWxsPSIjRTg4OTBBIiBvcGFjaXR5PSIwLjciLz4KICA8IS0tIExpbmUgMiAtIGNoZWNrZWQgLS0+CiAgPGNpcmNsZSBjeD0iMzIiIGN5PSI1MyIgcj0iNCIgZmlsbD0iI0Y1QTYyMyIvPgogIDxwYXRoIGQ9Ik0zMCA1MyBMMzEuNSA1NC44IEwzNC41IDUxLjUiIHN0cm9rZT0id2hpdGUiIHN0cm9rZS13aWR0aD0iMS41IiBmaWxsPSJub25lIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiLz4KICA8cmVjdCB4PSI0MCIgeT0iNTEiIHdpZHRoPSIyMiIgaGVpZ2h0PSIzIiByeD0iMS41IiBmaWxsPSIjRTg4OTBBIiBvcGFjaXR5PSIwLjciLz4KICA8IS0tIExpbmUgMyAtIHVuY2hlY2tlZCAtLT4KICA8Y2lyY2xlIGN4PSIzMiIgY3k9IjY1IiByPSI0IiBmaWxsPSJub25lIiBzdHJva2U9IiNGNUE2MjMiIHN0cm9rZS13aWR0aD0iMS41Ii8+CiAgPHJlY3QgeD0iNDAiIHk9IjYzIiB3aWR0aD0iMTgiIGhlaWdodD0iMyIgcng9IjEuNSIgZmlsbD0iI2NjYyIgb3BhY2l0eT0iMC44Ii8+Cjwvc3ZnPg==';
 
 const ADMIN_USER = 'Humberto';
-const ADMIN_PWD = 'Devine5062211@';
 
 // ── USER SCREEN ──
 function showScreen(id) {
@@ -1327,10 +1342,10 @@ window._delUser = function(name) {
   if(users.length<=1){showToast('⚠️ Debe haber al menos un usuario');return;}
   const pwd=prompt('Ingresa la contraseña de Humberto para borrar este usuario:');
   if(pwd===null)return;
-  if(pwd!==ADMIN_PWD){showToast('❌ Contraseña incorrecta');return;}
+  if(!adminPwdOk(pwd)){showToast('❌ Contraseña incorrecta');return;}
   if(!confirm(`¿Borrar el usuario "${name}"?`))return;
   users=users.filter(u=>u.name!==name);
-  setDoc(doc(db,'config','users'),{list:users});
+  saveUsersDoc();
   showToast('🗑️ Usuario eliminado');
 };
 
@@ -1341,7 +1356,7 @@ window.addUser = function() {
   if(!pwd){showToast('⚠️ Escribe una contraseña');return;}
   if(users.find(u=>u.name===name)){showToast('⚠️ Usuario ya existe');return;}
   users.push({name,pwd});
-  setDoc(doc(db,'config','users'),{list:users});
+  saveUsersDoc();
   document.getElementById('new-user-name').value='';
   document.getElementById('new-user-pwd').value='';
   renderUserScreen();
@@ -2044,7 +2059,7 @@ window.addUserAdmin = async function() {
   if (!pwd)  { showToast('⚠️ Escribe la contraseña'); return; }
   if (users.find(u => u.name === name)) { showToast('⚠️ Usuario ya existe'); return; }
   users.push({ name, pwd, phone, email });
-  await setDoc(doc(db,'config','users'), { list: users });
+  await saveUsersDoc();
   document.getElementById('ua-name').value = '';
   document.getElementById('ua-pwd').value = '';
   document.getElementById('ua-phone').value = '';
@@ -2057,7 +2072,7 @@ window.deleteUserAdmin = async function(i) {
   if (users[i].name === ADMIN_USER) { showToast('⚠️ No puedes eliminar a Humberto'); return; }
   if (!confirm(`¿Eliminar el usuario "${users[i].name}"?`)) return;
   users.splice(i, 1);
-  await setDoc(doc(db,'config','users'), { list: users });
+  await saveUsersDoc();
   renderUserAdmin();
   showToast('🗑️ Usuario eliminado');
 };
@@ -2083,7 +2098,7 @@ window.saveEditUser = async function() {
   if (!name) { showToast('⚠️ Escribe el nombre'); return; }
   if (!pwd)  { showToast('⚠️ Escribe la contraseña'); return; }
   users[i] = { ...users[i], name, pwd, phone, email };
-  await setDoc(doc(db,'config','users'), { list: users });
+  await saveUsersDoc();
   closeEditUser();
   renderUserAdmin();
   showToast('✅ Usuario actualizado', 'success');
@@ -3714,36 +3729,42 @@ window.sendEmail=async function(){
 
 // ── FIRESTORE LISTENERS ──
 // Users
+function _setLoadingMsg(html) {
+  const el = document.querySelector('#loading-screen > div:last-child');
+  if (el) el.innerHTML = html;
+}
 const _usersTimeout = setTimeout(()=>{
-  if(users.length===0){
-    users=DEFAULT_USERS;
-    document.getElementById('loading-screen').classList.add('hidden');
-    showScreen('user-screen');
-    renderUserScreen();
-    showToast('⚠️ Usando usuarios locales — verifica conexión');
+  if(!_usersLoaded){
+    // No se usan usuarios inventados: se sigue esperando a Firestore, que reintenta solo
+    _setLoadingMsg(`Sin conexión con la base de datos.<br>Reintentando…<br><br>
+      <span style="font-weight:400;font-size:13px;">Revisa tu señal o desactiva bloqueadores de anuncios / VPN.</span><br><br>
+      <button onclick="location.reload()" style="background:var(--accent);color:#fff;border:none;border-radius:10px;padding:10px 18px;font-size:14px;font-weight:700;cursor:pointer;">🔄 Reintentar</button>`);
   }
-},8000);
+},15000);
 
 onSnapshot(doc(db,'config','users'), snapshot=>{
-  clearTimeout(_usersTimeout);
   if(snapshot.exists()){
     const list = snapshot.data().list || [];
-    users = list.map(u => typeof u==='string' ? {name:u, pwd:'temp123'} : u).filter(u=>u.name);
-    if(users.length===0) users=DEFAULT_USERS;
+    const loaded = list.map(u => typeof u==='string' ? {name:u, pwd:''} : u).filter(u=>u.name);
+    if(loaded.length===0) return; // documento vacío: no reemplazar nada
+    users = loaded;
+    _usersLoaded = true;
+    clearTimeout(_usersTimeout);
+    if(snapshot.metadata.fromCache && !navigator.onLine) showToast('📴 Sin señal — usando los últimos datos guardados');
   } else {
-    users = DEFAULT_USERS;
-    setDoc(doc(db,'config','users'),{list:users});
+    // Sin copia local todavía y sin respuesta del servidor: seguir esperando
+    if(snapshot.metadata.fromCache) return;
+    clearTimeout(_usersTimeout);
+    _setLoadingMsg('⚠️ No existe la lista de usuarios en Firestore (config/users).<br>Avísale al administrador.');
+    return;
   }
   document.getElementById('loading-screen').classList.add('hidden');
   if(!currentUser) { showScreen('user-screen'); renderUserScreen(); }
-}, err=>{ 
+}, err=>{
   clearTimeout(_usersTimeout);
-  console.error('Users error:',err); 
-  users=DEFAULT_USERS; 
-  document.getElementById('loading-screen').classList.add('hidden');
-  showScreen('user-screen');
-  renderUserScreen();
-  showToast('⚠️ Error de conexión — verifica las reglas de Firestore');
+  console.error('Users error:',err);
+  _setLoadingMsg(`⚠️ Firestore rechazó la conexión (${esc(err.code||'error')}).<br>Verifica las reglas de Firestore.<br><br>
+    <button onclick="location.reload()" style="background:var(--accent);color:#fff;border:none;border-radius:10px;padding:10px 18px;font-size:14px;font-weight:700;cursor:pointer;">🔄 Reintentar</button>`);
 });
 
 // Projects
