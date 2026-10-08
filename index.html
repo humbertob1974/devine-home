@@ -1196,10 +1196,10 @@ const fbApp = initializeApp({ apiKey:"AIzaSyCVJ7H6P5KnTlpsRAvP7o0VIeztt1xF9Xg", 
 let db;
 try {
   // Guarda una copia local de la base: si no hay señal, la app usa los últimos datos reales que bajó
-  db = initializeFirestore(fbApp, { localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }) });
+  db = initializeFirestore(fbApp, { localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }), experimentalForceLongPolling: true });
 } catch(e) {
   console.warn('Caché persistente no disponible, usando modo normal:', e);
-  db = initializeFirestore(fbApp, {});
+  db = initializeFirestore(fbApp, { experimentalForceLongPolling: true });
 }
 
 // ── HELPERS ──
@@ -3738,7 +3738,14 @@ const _usersTimeout = setTimeout(()=>{
     // No se usan usuarios inventados: se sigue esperando a Firestore, que reintenta solo
     _setLoadingMsg(`Sin conexión con la base de datos.<br>Reintentando…<br><br>
       <span style="font-weight:400;font-size:13px;">Revisa tu señal o desactiva bloqueadores de anuncios / VPN.</span><br><br>
-      <button onclick="location.reload()" style="background:var(--accent);color:#fff;border:none;border-radius:10px;padding:10px 18px;font-size:14px;font-weight:700;cursor:pointer;">🔄 Reintentar</button>`);
+      <button onclick="location.reload()" style="background:var(--accent);color:#fff;border:none;border-radius:10px;padding:10px 18px;font-size:14px;font-weight:700;cursor:pointer;">🔄 Reintentar</button>
+      <div id="diag-conn" style="font-weight:400;font-size:12px;margin-top:14px;color:var(--text-dim);">Probando conexión con Google…</div>`);
+    // Diagnóstico: ¿este dispositivo puede llegar al servidor de Firestore?
+    const d = document.getElementById('diag-conn');
+    const ctrl = new AbortController(); const tt = setTimeout(()=>ctrl.abort(), 8000);
+    fetch('https://firestore.googleapis.com/v1/projects/devine-home/databases/(default)/documents/config/users?mask.fieldPaths=x&key=AIzaSyCVJ7H6P5KnTlpsRAvP7o0VIeztt1xF9Xg', {signal:ctrl.signal, cache:'no-store'})
+      .then(r => { clearTimeout(tt); if(d) d.textContent = r.ok ? `✅ El servidor sí responde (HTTP ${r.status}). Cierra la app por completo y vuelve a abrirla.` : `⚠️ El servidor respondió con error HTTP ${r.status} (permisos o cuota de Firebase).`; })
+      .catch(e => { clearTimeout(tt); if(d) d.textContent = `❌ Este dispositivo no logra llegar a firestore.googleapis.com (${e.name}). Revisa señal, VPN, bloqueador o "Relay privado de iCloud".`; });
   }
 },15000);
 
