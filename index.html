@@ -954,7 +954,24 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
       <div class="asist-result-row"><span>Horas netas</span><span id="res-horas-netas">0.0 h</span></div>
       <div class="asist-result-row"><span>Pago por hora</span><span id="res-tarifa">$0.00</span></div>
       <div class="asist-result-row" style="margin-top:6px;padding-top:10px;border-top:2px solid var(--border);"><span>💰 Total a pagar</span><span id="res-total">$0.00</span></div>
+      <button id="btn-desglose" onclick="generarDesglosePago()" style="width:100%;margin-top:14px;background:#25D366;color:#fff;border:none;border-radius:12px;padding:14px;font-size:15px;font-weight:800;cursor:pointer;">🧾 Generar desglose para WhatsApp</button>
+      <div style="font-size:11px;color:var(--text-dim);text-align:center;margin-top:6px;">Crea una imagen con los días, la comida descontada y el total a pagar</div>
     </div>
+  </div>
+</div>
+
+<!-- ASISTENCIA: DESGLOSE DE PAGO (IMAGEN) -->
+<div id="desglose-overlay" style="position:fixed;inset:0;background:rgba(0,0,0,0.9);z-index:750;display:none;flex-direction:column;">
+  <div style="background:var(--surface);padding:14px 20px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);flex-shrink:0;">
+    <div style="font-size:16px;font-weight:800;">🧾 Desglose de pago</div>
+    <button onclick="cerrarDesglose()" style="background:rgba(231,76,60,0.15);border:1px solid rgba(231,76,60,0.3);color:#E74C3C;border-radius:10px;padding:8px 14px;font-size:13px;font-weight:700;cursor:pointer;">✕ Cerrar</button>
+  </div>
+  <div style="flex:1;overflow-y:auto;padding:16px;max-width:600px;margin:0 auto;width:100%;">
+    <img id="desglose-img" alt="Desglose de pago" style="width:100%;border-radius:12px;box-shadow:0 4px 20px rgba(0,0,0,0.3);display:block;">
+  </div>
+  <div style="padding:12px 16px;display:flex;gap:10px;max-width:600px;margin:0 auto;width:100%;flex-shrink:0;">
+    <button onclick="compartirDesglose()" style="flex:2;background:#25D366;color:#fff;border:none;border-radius:12px;padding:15px;font-size:15px;font-weight:800;cursor:pointer;">📤 Compartir (WhatsApp)</button>
+    <button onclick="descargarDesglose()" style="flex:1;background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:12px;padding:15px;font-size:14px;font-weight:700;cursor:pointer;">⬇️ Guardar</button>
   </div>
 </div>
 
@@ -3021,6 +3038,139 @@ window.calcularTotales = function() {
   document.getElementById('res-tarifa').textContent = '$' + tarifa.toLocaleString('es-MX',{minimumFractionDigits:2});
   document.getElementById('res-total').textContent = '$' + total.toLocaleString('es-MX',{minimumFractionDigits:2});
   document.getElementById('calc-result').style.display = diasSel > 0 ? 'block' : 'none';
+};
+
+// ── Desglose de pago como imagen (para WhatsApp) ──
+function datosDesglose() {
+  const emp = document.getElementById('calc-empleado').value;
+  const tarifa = parseFloat(document.getElementById('calc-tarifa').value) || 0;
+  const regs = asistRegistros
+    .filter(r => r.projectId===currentProject?.id && r.empleado===emp && r.entrada && r.salida)
+    .filter(r => document.getElementById(`day-chk-${r.id}`)?.checked)
+    .sort((a,b) => a.fecha.localeCompare(b.fecha));
+  const dias = regs.map(r => {
+    const brutas = calcHoras(r.entrada, r.salida);
+    const comida = Math.min(calcComidaDia[r.id] ?? calcComidaDefault, brutas);
+    return { fecha:r.fecha, entrada:r.entrada, salida:r.salida, brutas, comida, netas:Math.max(0, brutas-comida) };
+  });
+  const sum = k => dias.reduce((s,d)=>s+d[k],0);
+  const netas = sum('netas');
+  return { emp, tarifa, dias, brutas:sum('brutas'), comida:sum('comida'), netas, total:netas*tarifa };
+}
+
+const fmtH = h => (Math.round(h*100)/100).toLocaleString('es-MX',{maximumFractionDigits:2}) + ' h';
+const fmtM = n => '$' + n.toLocaleString('es-MX',{minimumFractionDigits:2,maximumFractionDigits:2});
+const fmtComida = h => h === 0 ? '—' : h === 0.5 ? '½ h' : h === 1 ? '1 h' : fmtH(h);
+
+function dibujarDesglose(d) {
+  const W = 1080, P = 60, rowH = 74;
+  const H = 520 + d.dias.length*rowH + 470;
+  const c = document.createElement('canvas');
+  c.width = W; c.height = H;
+  const x = c.getContext('2d');
+  const F = 'system-ui,-apple-system,Segoe UI,Roboto,sans-serif';
+  const ACC = '#C17B2A', INK = '#2B2620', DIM = '#7A7166', LINE = '#E4DED4';
+
+  x.fillStyle = '#F5F3EF'; x.fillRect(0,0,W,H);
+  // Encabezado
+  x.fillStyle = ACC; x.fillRect(0,0,W,190);
+  x.fillStyle = '#fff';
+  x.font = `800 54px ${F}`; x.fillText('Desglose de pago', P, 92);
+  x.font = `500 30px ${F}`; x.fillText(currentProject?.name || '', P, 145);
+
+  // Datos generales
+  let y = 260;
+  const primero = d.dias[0]?.fecha, ultimo = d.dias[d.dias.length-1]?.fecha;
+  const fLarga = f => new Date(f+'T12:00:00').toLocaleDateString('es-MX',{day:'numeric',month:'short',year:'numeric'});
+  const info = [
+    ['Empleado', d.emp],
+    ['Periodo', primero ? (primero===ultimo ? fLarga(primero) : fLarga(primero)+' – '+fLarga(ultimo)) : ''],
+    ['Pago por hora', fmtM(d.tarifa)],
+  ];
+  info.forEach(([k,v]) => {
+    x.fillStyle = DIM; x.font = `500 28px ${F}`; x.fillText(k, P, y);
+    x.fillStyle = INK; x.font = `700 32px ${F}`; x.textAlign='right'; x.fillText(v, W-P, y); x.textAlign='left';
+    y += 54;
+  });
+
+  // Tabla
+  y += 30;
+  const cols = [P, 380, 660, 770, W-P]; // fecha | horario | horas | comida | netas(der)
+  x.fillStyle = '#fff'; x.fillRect(P-20, y-46, W-2*P+40, 70 + d.dias.length*rowH);
+  x.fillStyle = DIM; x.font = `700 24px ${F}`;
+  x.fillText('DÍA', cols[0], y); x.fillText('HORARIO', cols[1], y);
+  x.textAlign='right';
+  x.fillText('HORAS', cols[2]+60, y); x.fillText('COMIDA', cols[3]+100, y); x.fillText('NETAS', cols[4], y);
+  x.textAlign='left';
+  y += 20;
+  d.dias.forEach((r,i) => {
+    x.strokeStyle = LINE; x.lineWidth = 2; x.beginPath(); x.moveTo(P,y); x.lineTo(W-P,y); x.stroke();
+    const ty = y + 48;
+    const dia = new Date(r.fecha+'T12:00:00').toLocaleDateString('es-MX',{weekday:'short',day:'numeric',month:'short'});
+    x.fillStyle = INK; x.font = `700 28px ${F}`; x.fillText(dia.charAt(0).toUpperCase()+dia.slice(1), cols[0], ty);
+    x.font = `500 28px ${F}`; x.fillStyle = DIM; x.fillText(`${r.entrada} – ${r.salida}`, cols[1], ty);
+    x.textAlign='right';
+    x.fillStyle = INK; x.fillText(fmtH(r.brutas), cols[2]+60, ty);
+    x.fillStyle = r.comida ? '#C0392B' : DIM; x.fillText(r.comida ? '−'+fmtComida(r.comida) : '—', cols[3]+100, ty);
+    x.fillStyle = INK; x.font = `700 28px ${F}`; x.fillText(fmtH(r.netas), cols[4], ty);
+    x.textAlign='left';
+    y += rowH;
+  });
+
+  // Totales
+  y += 70;
+  const tot = [
+    ['Días a pagar', String(d.dias.length)],
+    ['Horas trabajadas', fmtH(d.brutas)],
+    ['Descuento de comida', d.comida ? '−'+fmtH(d.comida) : '0 h'],
+    ['Horas a pagar', fmtH(d.netas)],
+  ];
+  tot.forEach(([k,v]) => {
+    x.fillStyle = DIM; x.font = `500 30px ${F}`; x.fillText(k, P, y);
+    x.fillStyle = INK; x.font = `700 32px ${F}`; x.textAlign='right'; x.fillText(v, W-P, y); x.textAlign='left';
+    y += 54;
+  });
+  y += 10;
+  x.fillStyle = ACC; x.fillRect(P-20, y, W-2*P+40, 120);
+  x.fillStyle = '#fff'; x.font = `700 36px ${F}`; x.fillText('Total a pagar', P+10, y+75);
+  x.font = `800 54px ${F}`; x.textAlign='right'; x.fillText(fmtM(d.total), W-P-10, y+80); x.textAlign='left';
+
+  // Pie
+  x.fillStyle = DIM; x.font = `400 22px ${F}`;
+  const gen = new Date().toLocaleString('es-MX',{day:'numeric',month:'short',year:'numeric',hour:'numeric',minute:'2-digit'});
+  x.fillText(`Generado el ${gen} por ${currentUser || ''}`, P, H-36);
+  return c;
+}
+
+let desgloseBlob = null, desgloseNombre = '';
+window.generarDesglosePago = function() {
+  const d = datosDesglose();
+  if (!d.dias.length) { showToast('Selecciona al menos un día'); return; }
+  if (!d.tarifa) { showToast('Escribe el pago por hora'); return; }
+  const canvas = dibujarDesglose(d);
+  desgloseNombre = `Pago_${d.emp.replace(/\s+/g,'_')}_${d.dias[d.dias.length-1].fecha}.png`;
+  canvas.toBlob(blob => {
+    desgloseBlob = blob;
+    document.getElementById('desglose-img').src = URL.createObjectURL(blob);
+    document.getElementById('desglose-overlay').style.display = 'flex';
+  }, 'image/png');
+};
+window.cerrarDesglose = function() { document.getElementById('desglose-overlay').style.display = 'none'; };
+window.compartirDesglose = async function() {
+  if (!desgloseBlob) return;
+  const file = new File([desgloseBlob], desgloseNombre, { type:'image/png' });
+  if (navigator.canShare && navigator.canShare({ files:[file] })) {
+    try { await navigator.share({ files:[file], title:'Desglose de pago' }); } catch(e) {}
+  } else {
+    descargarDesglose();
+    showToast('Imagen descargada — adjúntala en WhatsApp');
+  }
+};
+window.descargarDesglose = function() {
+  if (!desgloseBlob) return;
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(desgloseBlob); a.download = desgloseNombre;
+  document.body.appendChild(a); a.click(); a.remove();
 };
 
 // Render principal
