@@ -3064,7 +3064,7 @@ const fmtComida = h => h === 0 ? '—' : h === 0.5 ? '½ h' : h === 1 ? '1 h' : 
 
 function dibujarDesglose(d) {
   const W = 1080, P = 60, rowH = 74;
-  const H = 520 + d.dias.length*rowH + 470;
+  const H = 640 + d.dias.length*rowH + 470;
   const c = document.createElement('canvas');
   c.width = W; c.height = H;
   const x = c.getContext('2d');
@@ -3079,11 +3079,17 @@ function dibujarDesglose(d) {
   x.font = `500 30px ${F}`; x.fillText(currentProject?.name || '', P, 145);
 
   // Datos generales
-  let y = 260;
+  let y = 250;
+  // Nombre del empleado: grande y en rojo, en su propia línea
+  x.fillStyle = DIM; x.font = `500 28px ${F}`; x.fillText('Empleado', P, y);
+  let fs = 96;
+  x.font = `800 ${fs}px ${F}`;
+  while (x.measureText(d.emp).width > W-2*P && fs > 40) { fs -= 4; x.font = `800 ${fs}px ${F}`; }
+  x.fillStyle = '#D62828'; x.fillText(d.emp, P, y + 100);
+  y += 180;
   const primero = d.dias[0]?.fecha, ultimo = d.dias[d.dias.length-1]?.fecha;
   const fLarga = f => new Date(f+'T12:00:00').toLocaleDateString('es-MX',{day:'numeric',month:'short',year:'numeric'});
   const info = [
-    ['Empleado', d.emp],
     ['Periodo', primero ? (primero===ultimo ? fLarga(primero) : fLarga(primero)+' – '+fLarga(ultimo)) : ''],
     ['Pago por hora', fmtM(d.tarifa)],
   ];
