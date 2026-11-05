@@ -3051,7 +3051,7 @@ function datosDesglose() {
   const dias = regs.map(r => {
     const brutas = calcHoras(r.entrada, r.salida);
     const comida = Math.min(calcComidaDia[r.id] ?? calcComidaDefault, brutas);
-    return { fecha:r.fecha, entrada:r.entrada, salida:r.salida, brutas, comida, netas:Math.max(0, brutas-comida) };
+    return { fecha:r.fecha, entrada:r.entrada, salida:r.salida, notas:(r.notas||'').trim(), brutas, comida, netas:Math.max(0, brutas-comida) };
   });
   const sum = k => dias.reduce((s,d)=>s+d[k],0);
   const netas = sum('netas');
@@ -3063,12 +3063,31 @@ const fmtM = n => '$' + n.toLocaleString('es-MX',{minimumFractionDigits:2,maximu
 const fmtComida = h => h === 0 ? '—' : h === 0.5 ? '½ h' : h === 1 ? '1 h' : fmtH(h);
 
 function dibujarDesglose(d) {
-  const W = 1080, P = 60, rowH = 74;
-  const H = 640 + d.dias.length*rowH + 470;
+  const W = 1080, P = 60, rowH = 74, noteLH = 34;
+  const F = 'system-ui,-apple-system,Segoe UI,Roboto,sans-serif';
+  const NOTE_FONT = `italic 500 25px ${F}`;
+  // Partir notas en líneas que quepan a lo ancho de la tabla
+  const mx = document.createElement('canvas').getContext('2d');
+  mx.font = NOTE_FONT;
+  const wrap = (txt, maxW) => {
+    const out = [];
+    txt.split(/\n+/).forEach(par => {
+      let line = '';
+      par.split(/\s+/).filter(Boolean).forEach(w => {
+        const t = line ? line + ' ' + w : w;
+        if (mx.measureText(t).width > maxW && line) { out.push(line); line = w; } else line = t;
+      });
+      if (line) out.push(line);
+    });
+    return out;
+  };
+  d.dias.forEach(r => { r.noteLines = r.notas ? wrap('📝 ' + r.notas, W - 2*P - 30) : []; });
+  const rowHeight = r => rowH + (r.noteLines.length ? r.noteLines.length*noteLH + 6 : 0);
+  const tablaH = d.dias.reduce((s,r)=>s+rowHeight(r),0);
+  const H = 640 + tablaH + 470;
   const c = document.createElement('canvas');
   c.width = W; c.height = H;
   const x = c.getContext('2d');
-  const F = 'system-ui,-apple-system,Segoe UI,Roboto,sans-serif';
   const ACC = '#C17B2A', INK = '#2B2620', DIM = '#7A7166', LINE = '#E4DED4';
 
   x.fillStyle = '#F5F3EF'; x.fillRect(0,0,W,H);
@@ -3102,7 +3121,7 @@ function dibujarDesglose(d) {
   // Tabla
   y += 30;
   const cols = [P, 380, 660, 770, W-P]; // fecha | horario | horas | comida | netas(der)
-  x.fillStyle = '#fff'; x.fillRect(P-20, y-46, W-2*P+40, 70 + d.dias.length*rowH);
+  x.fillStyle = '#fff'; x.fillRect(P-20, y-46, W-2*P+40, 70 + tablaH);
   x.fillStyle = DIM; x.font = `700 24px ${F}`;
   x.fillText('DÍA', cols[0], y); x.fillText('HORARIO', cols[1], y);
   x.textAlign='right';
@@ -3120,7 +3139,11 @@ function dibujarDesglose(d) {
     x.fillStyle = r.comida ? '#C0392B' : DIM; x.fillText(r.comida ? '−'+fmtComida(r.comida) : '—', cols[3]+100, ty);
     x.fillStyle = INK; x.font = `700 28px ${F}`; x.fillText(fmtH(r.netas), cols[4], ty);
     x.textAlign='left';
-    y += rowH;
+    if (r.noteLines.length) {
+      x.fillStyle = '#5A6B7A'; x.font = NOTE_FONT;
+      r.noteLines.forEach((ln, k) => x.fillText(ln, cols[0] + 10, ty + 40 + k*noteLH));
+    }
+    y += rowHeight(r);
   });
 
   // Totales
