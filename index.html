@@ -907,7 +907,7 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
 <!-- ASISTENCIA: CALCULAR HORAS MODAL -->
 <div id="asist-calc-overlay" style="position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:700;display:none;flex-direction:column;">
   <div style="background:var(--surface);padding:14px 20px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);flex-shrink:0;">
-    <div style="font-size:16px;font-weight:800;">🧮 Calcular Horas Trabajadas</div>
+    <div style="font-size:16px;font-weight:800;">🧮 Calcular Horas Trabajadas <span id="calc-version" style="font-size:10px;font-weight:500;color:var(--text-dim);">v 2026-11-09a</span></div>
     <button onclick="closeAsistCalc()" style="background:rgba(231,76,60,0.15);border:1px solid rgba(231,76,60,0.3);color:#E74C3C;border-radius:10px;padding:8px 14px;font-size:13px;font-weight:700;cursor:pointer;">✕ Cerrar</button>
   </div>
   <div style="flex:1;overflow-y:auto;padding:16px;max-width:600px;margin:0 auto;width:100%;">
@@ -1278,6 +1278,22 @@ let matListas = [];
 let mlItems = [];
 let meItems = [];
 let asistRegistros = [];
+
+// ── Versión de la app y actualización automática ──
+const APP_VERSION = '2026-11-09a';
+async function checkAppUpdate() {
+  try {
+    const res = await fetch(location.pathname + '?nocache=' + Date.now(), { cache: 'no-store' });
+    const txt = await res.text();
+    const m = txt.match(/const APP_VERSION = '([^']+)'/);
+    if (!m || m[1] === APP_VERSION) return;
+    const key = 'upd-' + m[1];
+    try { if (sessionStorage.getItem(key)) return; sessionStorage.setItem(key, '1'); } catch(e) {}
+    location.replace(location.pathname + '?v=' + encodeURIComponent(m[1]));
+  } catch(e) {}
+}
+checkAppUpdate();
+document.addEventListener('visibilitychange', () => { if (!document.hidden) checkAppUpdate(); });
 let asistConfig = {};
 let galeriaFotos = [];
 let galeriaPhotoFiles = [];
